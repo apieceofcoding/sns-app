@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+env:
+  IMAGE: ghcr.io/apieceofcoding/sns-app
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build & Test
+        run: ./gradlew build
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+  update-manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: apieceofcoding/sns-devops
+          token: ${{ secrets.DEVOPS_TOKEN }}
+
+      - name: Update image tag
+        run: |
+          IMAGE_TAG="${{ needs.build.outputs.image-tag }}"
+          sed -i "s|image: .*sns-app.*|image: ${{ env.IMAGE }}:${IMAGE_TAG}|" k8s/springboot-sns/app.yaml
+
+      - name: Commit & Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/springboot-sns/app.yaml
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "deploy: sns-app ${GITHUB_SHA::7}"
+          git push
