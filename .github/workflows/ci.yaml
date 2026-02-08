@@ -3,13 +3,14 @@ name: CI
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 env:
   IMAGE: ghcr.io/apieceofcoding/sns-app
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -40,7 +41,6 @@ jobs:
           images: ${{ env.IMAGE }}
           tags: |
             type=sha,prefix=
-            type=raw,value=latest
 
       - uses: docker/build-push-action@v6
         with:
@@ -50,7 +50,7 @@ jobs:
 
   update-manifest:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
