@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: springboot-sns-sample
+  datasource:
+    url: jdbc:postgresql://localhost:5432/snsdb
+    username: snsuser
+    password: snspassword
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  session:
+    store-type: redis
+rustfs:
+  endpoint: http://localhost:9000
+  access-key: rustfsadmin
+  secret-key: rustfsadmin
+  bucket: media
+  region: ap-northeast-2
+  presigned-url-expiration-seconds: 3600

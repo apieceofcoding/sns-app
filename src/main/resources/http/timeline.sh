@@ -1,0 +1,19 @@
+#!/bin/bash
+
+BASE_URL="http://localhost:8080"
+
+# Get Timeline
+echo "=== Get Timeline ==="
+curl -X GET "${BASE_URL}/api/v1/timeline" \
+  -b cookies.txt \
+  -v
+
+echo -e "\n\n"
+
+# Get Timeline with custom limit
+echo "=== Get Timeline with limit=10 ==="
+curl -X GET "${BASE_URL}/api/v1/timeline?limit=10" \
+  -b cookies.txt \
+  -v
+
+echo -e "\n"

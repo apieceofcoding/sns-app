@@ -1,0 +1,41 @@
+{
+  "tools": {
+    "allowed": [
+      "run_shell_command(./gradlew build)",
+      "run_shell_command(./gradlew)",
+      "run_shell_command(xargs kill)",
+      "run_shell_command(curl)",
+      "run_shell_command(pkill)",
+      "run_shell_command(lsof)",
+      "run_shell_command(cat)",
+      "run_shell_command(mkdir)",
+      "run_shell_command(chmod)",
+      "run_shell_command(xargs)",
+      "run_shell_command(pgrep)",
+      "run_shell_command(npm search)",
+      "run_shell_command(redis-cli)",
+      "run_shell_command(docker ps)",
+      "run_shell_command(docker exec)",
+      "run_shell_command(find)"
+    ]
+  },
+  "hooks": {
+    "AfterTool": [
+      {
+        "matcher": "write_file|replace_in_file",
+        "hooks": [
+          {
+            "name": "spotless-lint",
+            "type": "command",
+            "command": "$GEMINI_PROJECT_DIR/.gemini/hooks/lint.sh",
+            "timeout": 60000,
+            "description": "Run spotlessApply on modified files"
+          }
+        ]
+      }
+    ]
+  },
+  "experimental": {
+    "skills": true
+  }
+}

@@ -1,0 +1,56 @@
+# Code review command for Spring Boot project
+# Invoked via: /codereview
+
+description = "Run code review on modified files against Spring Boot project standards"
+
+prompt = """
+## Task
+
+code-reviewer skill을 활성화하여 코드리뷰를 수행해주세요.
+
+1. 먼저 `git status --short`와 `git diff --name-only`로 수정된 파일을 확인합니다.
+2. 수정된 파일이 없으면 사용자에게 알리고 종료합니다.
+3. 수정된 파일만 읽고 프로젝트 표준에 맞춰 리뷰합니다.
+
+## Review Checklist (Total: 17 items)
+
+### Spring API Rules (11 items)
+1. Constructor injection using `@RequiredArgsConstructor` where possible (no field injection)
+2. `@ConfigurationProperties` as records
+3. No `@RequestMapping` at class level; full path on each method
+4. `ResponseEntity<T>` return type in controllers
+5. DTOs as Java records
+6. Request DTO: `toEntity()` method / Response DTO: `from(Entity)` static factory (only if needed)
+7. No business logic in DTOs (only data conversion methods allowed)
+8. Entity: `protected` default constructor, `@GeneratedValue(IDENTITY)`
+9. No FK constraints; use `@JoinColumn` only
+10. `@Transactional` only when necessary (Dirty Checking, multiple writes)
+11. Domain structure: Entity, Repository, Service, Exception in `domain/{name}/`
+
+### General Quality (6 items)
+12. No hardcoded values that should be configurable
+13. Proper null handling
+14. Meaningful variable and method names
+15. No unused imports or dead code
+16. Security vulnerabilities (SQL injection, XSS, etc.)
+17. Performance concerns
+
+## Output Format
+
+```
+## Summary
+[Brief overview of code quality]
+
+## Critical Issues (must fix)
+- ClassName (path/to/File.java:123): Issue description
+
+## Warnings (should fix)
+- ClassName (path/to/File.java:45): Issue description
+
+## Suggestions (consider improving)
+- [Improvement suggestions]
+
+## Good Practices
+- [What was done well]
+```
+"""
