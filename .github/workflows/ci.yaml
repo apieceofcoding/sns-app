@@ -60,13 +60,13 @@ jobs:
       - name: Update image tag
         run: |
           IMAGE_TAG="${{ needs.build.outputs.image-tag }}"
-          sed -i "s|image: .*sns-app.*|image: ${{ env.IMAGE }}:${IMAGE_TAG}|" k8s/springboot-sns/app.yaml
+          sed -i "s|image: .*sns-app.*|image: ${{ env.IMAGE }}:${IMAGE_TAG}|" k8s/sns-app/app.yaml
 
       - name: Commit & Push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/springboot-sns/app.yaml
+          git add k8s/sns-app/app.yaml
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "deploy: sns-app ${GITHUB_SHA::7}"
           git push
