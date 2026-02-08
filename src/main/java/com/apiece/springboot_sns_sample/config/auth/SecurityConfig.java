@@ -62,7 +62,8 @@ public class SecurityConfig implements BeanClassLoaderAware {
                         .requestMatchers(
                                 "/api/v1/users/signup",
                                 "/api/v1/login",
-                                "/api/v1/sessions"
+                                "/api/v1/sessions",
+                                "/actuator/health"
                         ).permitAll()
                         .anyRequest().authenticated()
                 ).exceptionHandling(exception -> exception

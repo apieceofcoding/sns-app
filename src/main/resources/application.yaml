@@ -16,6 +16,15 @@ spring:
       port: 6379
   session:
     store-type: redis
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
 rustfs:
   endpoint: http://localhost:9000
   access-key: rustfsadmin
