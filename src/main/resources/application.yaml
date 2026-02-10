@@ -1,6 +1,6 @@
 spring:
   application:
-    name: springboot-sns-sample
+    name: sns-app
   datasource:
     url: jdbc:postgresql://localhost:5432/snsdb
     username: snsuser
