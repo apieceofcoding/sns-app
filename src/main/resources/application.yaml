@@ -25,11 +25,17 @@ management:
     health:
       show-details: always
       show-components: always
-  otlp:
+  opentelemetry:
     logging:
-      endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs"
+      export:
+        otlp:
+          endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs"
+          transport: http
     tracing:
-      endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces"
+      export:
+        otlp:
+          endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces"
+          transport: http
 rustfs:
   endpoint: http://localhost:9000
   access-key: rustfsadmin
