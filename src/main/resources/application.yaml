@@ -20,7 +20,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: "health,prometheus"
 rustfs:
   endpoint: http://localhost:9000
   access-key: rustfsadmin
