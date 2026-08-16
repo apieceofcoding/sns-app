@@ -27,7 +27,7 @@ public class TimelineService {
     private final PostRepository postRepository;
 
     public void fanOutToFollowers(Long postId, User author) {
-        FollowCount followCount = followCountService.getFollowCount(author.getId());
+        FollowCount followCount = followCountService.getFollowCountOrDefault(author.getId());
 
         timelineRepository.addPostToTimeline(author.getId(), postId);
 
@@ -47,7 +47,7 @@ public class TimelineService {
         List<Follow> follows = followRepository.findByFollowerIdAndDeletedAtIsNull(user.getId());
         follows.parallelStream()
                 .map(Follow::getFolloweeId)
-                .map(followCountService::getFollowCount)
+                .map(followCountService::getFollowCountOrDefault)
                 .filter(FollowCount::isCeleb)
                 .flatMap(followCount -> timelineRepository.getCelebPosts(followCount.getUserId(), 5).stream())
                 .forEach(postId -> timelineRepository.addPostToTimelineIfAbsent(user.getId(), postId));

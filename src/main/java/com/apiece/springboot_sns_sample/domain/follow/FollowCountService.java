@@ -13,11 +13,6 @@ public class FollowCountService {
 
     private final FollowCountRepository followCountRepository;
 
-    public FollowCount getFollowCount(Long userId) {
-        return followCountRepository.findByUserIdAndDeletedAtIsNull(userId)
-                .orElseThrow(() -> new IllegalStateException("FollowCount not found for user"));
-    }
-
     public FollowCount getFollowCountOrDefault(Long userId) {
         return followCountRepository.findByUserIdAndDeletedAtIsNull(userId)
                 .orElse(FollowCount.createDefault(userId));
