@@ -1,6 +1,6 @@
 spring:
   application:
-    name: springboot-sns-sample
+    name: sns-app
   datasource:
     url: jdbc:postgresql://localhost:5432/snsdb
     username: snsuser
@@ -21,6 +21,17 @@ management:
     web:
       exposure:
         include: "health,prometheus"
+  opentelemetry:
+    logging:
+      export:
+        otlp:
+          endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs"
+          transport: http
+    tracing:
+      export:
+        otlp:
+          endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces"
+          transport: http
 rustfs:
   endpoint: http://localhost:9000
   access-key: rustfsadmin
