@@ -4,6 +4,29 @@ plugins {
     id("io.spring.dependency-management") version "1.1.7"
     id("io.freefair.lombok") version "9.5.0"
     id("com.diffplug.spotless") version "8.9.0"
+    id("com.google.cloud.tools.jib") version "3.5.4"
+}
+
+jib {
+    from {
+        // 실행에 필요한 것은 JRE 뿐이라 jre 베이스를 쓴다
+        image = "eclipse-temurin:25-jre-alpine"
+        platforms {
+            platform {
+                // Apple Silicon 과 Intel 을 모두 지원하도록 빌드 머신 아키텍처를 따른다
+                architecture = if (System.getProperty("os.arch") == "aarch64") "arm64" else "amd64"
+                os = "linux"
+            }
+        }
+    }
+    to {
+        image = "springboot-sns:latest"
+    }
+    container {
+        ports = listOf("8080")
+        // non-root 실행
+        user = "1000:1000"
+    }
 }
 
 group = "com.apiece"
@@ -23,6 +46,7 @@ repositories {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.session:spring-session-data-redis")
