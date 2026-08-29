@@ -36,6 +36,10 @@ management:
   tracing:
     sampling:
       probability: 1.0
+recommender:
+  base-url: "${RECOMMENDER_BASE_URL:http://localhost:8081}"
+  connect-timeout: 200ms
+  timeout: 200ms
 rustfs:
   endpoint: http://localhost:9000
   access-key: rustfsadmin
