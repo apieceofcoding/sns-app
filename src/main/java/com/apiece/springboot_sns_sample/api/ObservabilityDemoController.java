@@ -18,17 +18,10 @@ import java.util.Map;
 @RequestMapping("/api/v1/demo")
 public class ObservabilityDemoController {
 
-    /** 타임라인 한 페이지를 흉내 낸 고정 후보 목록. 로그인 없이 호출할 수 있도록 값을 고정했다. */
     private static final List<Long> DEMO_CANDIDATES = List.of(101L, 102L, 103L, 104L, 105L);
 
     private final RecommenderClient recommenderClient;
 
-    /**
-     * 트레이스 실습용 엔드포인트.
-     *
-     * <p>타임라인과 같은 방식으로 추천 서비스를 호출한다. 이 호출이 서비스 경계를 넘으므로
-     * 하나의 트레이스 안에 sns-app 과 sns-recommender 의 Span 이 함께 나타난다.
-     */
     @GetMapping("/trace")
     public ResponseEntity<Map<String, Object>> trace(
             @RequestParam(defaultValue = "hello") String message,
