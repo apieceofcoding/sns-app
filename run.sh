@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 9. AI Agent 기반 RCA
+# Phase 9. AI Agent 기반 장애 분석
 # 사용법: ./run.sh [요청수]   (기본 60)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -16,7 +16,7 @@ done
 echo "  성공 $ok / 실패 $err"
 echo
 echo "이제 sns-devops 에서 원인을 찾습니다."
-echo "  git -C ../sns-devops checkout part-9-ai-agent-rca"
-echo "  cd ../sns-devops && tools/obsctl rca sns-app"
+echo "  git -C ../sns-devops checkout part-9-ai-agent-analysis"
+echo "  cd ../sns-devops && tools/obsctl analyze sns-app"
 echo
 echo "또는 Claude Code 에게: \"sns-app 에러율이 올랐는데 원인 찾아줘\""

@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 9강 RCA 실습용 엔드포인트.
+ * 9강 장애 분석 실습용 엔드포인트.
  *
  * <p>추천 피드를 돌려주는 평범한 API 처럼 보이지만, beta 세그먼트로 분류된 요청만
  * 느린 추천 서비스를 타고 타임아웃으로 실패한다. 세그먼트는 userId 로 결정되므로
@@ -29,15 +29,15 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/demo")
-public class RcaDemoController {
+public class FeedDemoController {
 
     /** 추천 서비스 호출 타임아웃. 실패의 직접 원인이다. */
     private static final long TIMEOUT_MS = 200;
 
     private final Tracer tracer;
 
-    public RcaDemoController(OpenTelemetry openTelemetry) {
-        this.tracer = openTelemetry.getTracer("sns-app.rca-demo");
+    public FeedDemoController(OpenTelemetry openTelemetry) {
+        this.tracer = openTelemetry.getTracer("sns-app.feed-demo");
     }
 
     @GetMapping("/feed")
