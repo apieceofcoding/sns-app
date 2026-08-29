@@ -18,25 +18,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 9강 장애 분석 실습용 엔드포인트.
- *
- * <p>추천 피드를 돌려주는 평범한 API 처럼 보이지만, beta 세그먼트로 분류된 요청만 느린 추천
- * 경로를 타서 타임아웃으로 실패한다. 세그먼트는 userId 로 결정되므로 재현이 가능하다.
- *
- * <p>타임라인({@code TimelineService})은 추천이 실패해도 시간순으로 폴백하지만, 이 엔드포인트는
- * 일부러 폴백을 두지 않았다. 폴백이 없는 호출이 어떻게 장애가 되는지가 이번 실습의 소재다.
- *
- * <p>세 신호를 따로 보면 원인이 안 나오도록 만든 것이 핵심이다. 메트릭은 "에러율이 올랐다"까지만,
- * 트레이스는 "recommendation-fetch 구간이 타임아웃으로 끊겼다"까지만, 로그는 "beta 세그먼트만
- * 실패한다"까지만 알려준다. 셋을 합쳐야 결론이 선다.
- */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/demo")
 public class FeedDemoController {
 
-    /** 피드 한 페이지를 흉내 낸 고정 후보 목록. */
     private static final List<Long> FEED_CANDIDATES = List.of(101L, 102L, 103L, 104L, 105L);
 
     private final Tracer tracer;
@@ -82,10 +68,6 @@ public class FeedDemoController {
         }
     }
 
-    /**
-     * 세그먼트를 호출하는 쪽에서도 계산한다. 추천 서비스가 응답하지 않으면 세그먼트를 응답에서
-     * 알 수 없는데, 실패를 어느 집단에 귀속시킬지는 그때가 가장 중요하기 때문이다.
-     */
     private String segmentOf(long userId) {
         return (userId % 3 == 0) ? "beta" : "ga";
     }
