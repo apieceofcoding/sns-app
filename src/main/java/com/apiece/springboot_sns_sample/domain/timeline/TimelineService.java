@@ -72,19 +72,12 @@ public class TimelineService {
                 .filter(Objects::nonNull)
                 .toList();
 
-        // 다음 페이지 기준점은 재정렬 전의 시간순 결과에서 뽑는다. 추천 순서로 뽑으면
-        // 마지막 항목이 가장 오래된 글이라는 보장이 깨져서 페이지가 밀리거나 겹친다.
         Double nextCursor = entries.getLast().score();
         boolean hasMore = entries.size() >= limit;
 
         return new TimelinePage(posts, nextCursor, hasMore);
     }
 
-    /**
-     * 한 페이지 안에서만 노출 순서를 바꾼다. 페이지 경계는 시간순이 정하고, 그 안의 배열은 추천이 정한다.
-     *
-     * <p>추천 서비스가 느리거나 죽어도 타임라인 자체는 보여야 하므로, 실패하면 원래 시간순으로 돌아간다.
-     */
     private List<Long> rankForDisplay(Long userId, List<Long> postIds) {
         try {
             return recommenderClient.rank(userId, postIds);
