@@ -96,6 +96,41 @@ class RecommenderClientTest {
                 .hasMessageContaining("빈 응답");
     }
 
+    @Test
+    @DisplayName("세그먼트는 직접 계산하지 않고 추천 서비스가 판정한 값을 쓴다")
+    void asksRecommenderForSegment() throws IOException {
+        AtomicReference<String> received = new AtomicReference<>();
+        startServer("/v1/segment", exchange -> {
+            received.set(exchange.getRequestURI().getQuery());
+            respond(exchange, 200, "{\"userId\":7,\"segment\":\"beta\"}");
+        });
+
+        String segment = client().segmentOf(7L);
+
+        assertThat(received.get()).isEqualTo("userId=7");
+        assertThat(segment).isEqualTo("beta");
+    }
+
+    @Test
+    @DisplayName("세그먼트 조회가 실패하면 RecommenderException 을 던진다")
+    void throwsWhenSegmentLookupFails() throws IOException {
+        startServer("/v1/segment", exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"));
+
+        assertThatThrownBy(() -> client().segmentOf(7L))
+                .isInstanceOf(RecommenderException.class)
+                .hasMessageContaining("userId=7");
+    }
+
+    @Test
+    @DisplayName("세그먼트 응답이 비어 있으면 RecommenderException 을 던진다")
+    void throwsOnMissingSegment() throws IOException {
+        startServer("/v1/segment", exchange -> respond(exchange, 200, "{\"userId\":7}"));
+
+        assertThatThrownBy(() -> client().segmentOf(7L))
+                .isInstanceOf(RecommenderException.class)
+                .hasMessageContaining("빈 응답");
+    }
+
     private RecommenderClient client() {
         RecommenderProperties properties = new RecommenderProperties(
                 "http://localhost:" + server.getAddress().getPort(),
@@ -108,8 +143,12 @@ class RecommenderClientTest {
     }
 
     private void startServer(HttpHandler handler) throws IOException {
+        startServer("/v1/rank", handler);
+    }
+
+    private void startServer(String path, HttpHandler handler) throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-        server.createContext("/v1/rank", exchange -> {
+        server.createContext(path, exchange -> {
             try {
                 handler.handle(exchange);
             } finally {

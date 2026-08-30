@@ -14,6 +14,24 @@ public class RecommenderClient {
 
     private final RestClient recommenderRestClient;
 
+    public String segmentOf(Long userId) {
+        SegmentResponse response;
+        try {
+            response = recommenderRestClient.get()
+                    .uri("/v1/segment?userId={userId}", userId)
+                    .retrieve()
+                    .body(SegmentResponse.class);
+        } catch (Exception e) {
+            throw new RecommenderException("세그먼트 조회에 실패했습니다 userId=" + userId, e);
+        }
+
+        if (response == null || response.segment() == null) {
+            throw new RecommenderException("세그먼트 조회가 빈 응답을 반환했습니다 userId=" + userId);
+        }
+
+        return response.segment();
+    }
+
     public List<Long> rank(Long userId, List<Long> postIds) {
         RankResponse response;
         try {

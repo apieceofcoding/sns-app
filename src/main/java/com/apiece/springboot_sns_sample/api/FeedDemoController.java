@@ -24,6 +24,7 @@ import java.util.Map;
 public class FeedDemoController {
 
     private static final List<Long> FEED_CANDIDATES = List.of(101L, 102L, 103L, 104L, 105L);
+    private static final String UNKNOWN_SEGMENT = "unknown";
 
     private final Tracer tracer;
     private final RecommenderClient recommenderClient;
@@ -39,14 +40,13 @@ public class FeedDemoController {
 
     @GetMapping("/feed")
     public ResponseEntity<Map<String, Object>> feed(@RequestParam(defaultValue = "1") long userId) {
-        String segment = segmentOf(userId);
-
         Span span = tracer.spanBuilder("recommendation-fetch").startSpan();
+        String segment = UNKNOWN_SEGMENT;
         try (Scope ignored = span.makeCurrent()) {
             span.setAttribute("user.id", userId);
-            span.setAttribute("user.segment", segment);
             span.setAttribute("timeout.ms", timeoutMs);
 
+            segment = recommenderClient.segmentOf(userId);
             List<Long> rankedPostIds = recommenderClient.rank(userId, FEED_CANDIDATES);
 
             log.info("피드 응답 완료 userId={} segment={} items={}", userId, segment, rankedPostIds.size());
@@ -64,11 +64,8 @@ public class FeedDemoController {
                     "reason", "recommendation_timeout",
                     "segment", segment));
         } finally {
+            span.setAttribute("user.segment", segment);
             span.end();
         }
-    }
-
-    private String segmentOf(long userId) {
-        return (userId % 3 == 0) ? "beta" : "ga";
     }
 }
