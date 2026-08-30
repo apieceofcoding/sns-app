@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 8. 통합
+# Phase 8. 알림과 장애 대응
 # 사용법: ./run.sh
 set -euo pipefail
 cd "$(dirname "$0")"
