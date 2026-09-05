@@ -17,6 +17,11 @@ spring:
   session:
     store-type: redis
 management:
+  health:
+    db:
+      enabled: false
+    redis:
+      enabled: false
   endpoints:
     web:
       exposure:
