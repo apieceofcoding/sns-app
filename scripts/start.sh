@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Phase 0. 원본 앱 실행
-# 사용법: scripts/part-0/run.sh
+# 기본 앱 실행
+# 사용법: scripts/start.sh
 set -euo pipefail
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/.."
 
 echo "==> 인프라 기동 (postgres, redis, rustfs)"
 docker compose up -d
