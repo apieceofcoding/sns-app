@@ -6,8 +6,11 @@ import com.apiece.springboot_sns_sample.domain.follow.FollowCountService;
 import com.apiece.springboot_sns_sample.domain.follow.FollowRepository;
 import com.apiece.springboot_sns_sample.domain.post.Post;
 import com.apiece.springboot_sns_sample.domain.post.PostRepository;
+import com.apiece.springboot_sns_sample.domain.recommendation.RecommenderClient;
+import com.apiece.springboot_sns_sample.domain.recommendation.RecommenderException;
 import com.apiece.springboot_sns_sample.domain.user.User;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,6 +20,7 @@ import java.util.function.Function;
 
 import static java.util.stream.Collectors.toMap;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TimelineService {
@@ -25,6 +29,7 @@ public class TimelineService {
     private final FollowRepository followRepository;
     private final FollowCountService followCountService;
     private final PostRepository postRepository;
+    private final RecommenderClient recommenderClient;
 
     public void fanOutToFollowers(Long postId, User author) {
         FollowCount followCount = followCountService.getFollowCountOrDefault(author.getId());
@@ -62,8 +67,8 @@ public class TimelineService {
         Map<Long, Post> postMap = postRepository.findAllByIdInAndDeletedAtIsNull(postIds).stream()
                 .collect(toMap(Post::getId, Function.identity()));
 
-        List<Post> posts = entries.stream()
-                .map(entry -> postMap.get(entry.postId()))
+        List<Post> posts = rankForDisplay(user.getId(), postIds).stream()
+                .map(postMap::get)
                 .filter(Objects::nonNull)
                 .toList();
 
@@ -71,5 +76,14 @@ public class TimelineService {
         boolean hasMore = entries.size() >= limit;
 
         return new TimelinePage(posts, nextCursor, hasMore);
+    }
+
+    private List<Long> rankForDisplay(Long userId, List<Long> postIds) {
+        try {
+            return recommenderClient.rank(userId, postIds);
+        } catch (RecommenderException e) {
+            log.warn("추천 정렬에 실패해 시간순으로 응답합니다 userId={} reason={}", userId, e.getMessage());
+            return postIds;
+        }
     }
 }
