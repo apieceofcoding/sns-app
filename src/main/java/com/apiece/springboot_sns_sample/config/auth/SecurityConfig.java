@@ -63,7 +63,8 @@ public class SecurityConfig implements BeanClassLoaderAware {
                                 "/api/v1/users/signup",
                                 "/api/v1/login",
                                 "/api/v1/sessions",
-                                "/actuator/health"
+                                "/actuator/health",
+                                "/actuator/prometheus"
                         ).permitAll()
                         .anyRequest().authenticated()
                 ).exceptionHandling(exception -> exception
