@@ -18,6 +18,10 @@ spring:
   session:
     store-type: redis
 management:
+  otlp:
+    metrics:
+      export:
+        enabled: false
   metrics:
     tags:
       application: sns-app
