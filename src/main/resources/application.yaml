@@ -7,7 +7,7 @@ spring:
     password: snspassword
     driver-class-name: org.postgresql.Driver
   jpa:
-    show-sql: true
+    show-sql: false
     hibernate:
       ddl-auto: update
   data:
@@ -31,11 +31,6 @@ management:
       exposure:
         include: "health,prometheus"
   opentelemetry:
-    logging:
-      export:
-        otlp:
-          endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/logs"
-          transport: http
     tracing:
       export:
         otlp:
@@ -48,6 +43,13 @@ recommender:
   base-url: "${RECOMMENDER_BASE_URL:http://localhost:8081}"
   connect-timeout: 200ms
   timeout: 200ms
+logging:
+  structured:
+    format:
+      console: logstash
+    json:
+      add:
+        service_name: "${spring.application.name}"
 rustfs:
   endpoint: http://localhost:9000
   access-key: rustfsadmin
