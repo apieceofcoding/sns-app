@@ -47,20 +47,4 @@ public class ObservabilityDemoController {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(Map.of("status", "error", "message", "추천 서비스 호출에 실패했습니다"));
     }
-
-    @GetMapping("/error")
-    public ResponseEntity<Map<String, String>> error() {
-        log.info("[STEP 1] 오류 재현 요청 수신");
-        log.warn("[STEP 2] 처리 중 이상 징후 발견");
-
-        try {
-            throw new RuntimeException("Simulated error for observability demo");
-        } catch (RuntimeException e) {
-            log.error("[STEP 3] 오류 발생: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "status", "error",
-                    "message", e.getMessage()
-            ));
-        }
-    }
 }
