@@ -35,7 +35,7 @@ public class ObservabilityDemoController {
 
         log.info("[STEP 3] 요청 처리 완료");
 
-        return ResponseEntity.ok(new TraceResponse("ok", message, rankedPostIds));
+        return ResponseEntity.ok(new TraceResponse(message, rankedPostIds));
     }
 
     @ExceptionHandler(RestClientException.class)

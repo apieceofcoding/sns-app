@@ -37,7 +37,7 @@ class ObservabilityDemoControllerTest {
         MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client))).build()
                 .perform(get("/api/v1/demo/trace"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ok"))
+                .andExpect(jsonPath("$.status").doesNotExist())
                 .andExpect(jsonPath("$.message").value("hello"))
                 .andExpect(jsonPath("$.rankedPostIds[0]").value(105));
     }
