@@ -17,6 +17,10 @@ spring:
   session:
     store-type: redis
 management:
+  logging:
+    export:
+      otlp:
+        enabled: false
   otlp:
     metrics:
       export:
