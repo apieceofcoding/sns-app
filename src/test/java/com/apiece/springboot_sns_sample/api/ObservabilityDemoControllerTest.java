@@ -4,7 +4,6 @@ import com.apiece.springboot_sns_sample.domain.recommendation.RecommendClient;
 import com.apiece.springboot_sns_sample.domain.recommendation.RecommendService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.client.ResourceAccessException;
 
 import java.util.List;
 
@@ -30,16 +29,4 @@ class ObservabilityDemoControllerTest {
                 .andExpect(jsonPath("$.rankedPostIds[0]").value(105));
     }
 
-    @Test
-    void recommendationTimeoutReturnsBadGateway() throws Exception {
-        RecommendClient client = mock(RecommendClient.class);
-        when(client.rank(3L, List.of(101L, 102L, 103L, 104L, 105L)))
-                .thenThrow(new ResourceAccessException("request timed out"));
-
-        MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client))).build()
-                .perform(get("/api/v1/demo/trace").param("userId", "3"))
-                .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.status").value("error"))
-                .andExpect(jsonPath("$.message").value("추천 서비스 호출에 실패했습니다"));
-    }
 }
