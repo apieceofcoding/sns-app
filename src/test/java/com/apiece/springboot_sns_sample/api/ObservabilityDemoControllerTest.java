@@ -17,6 +17,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ObservabilityDemoControllerTest {
 
     @Test
+    void errorReturnsInternalServerError() throws Exception {
+        RecommendClient client = mock(RecommendClient.class);
+
+        MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client))).build()
+                .perform(get("/api/v1/demo/error"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.status").value("error"))
+                .andExpect(jsonPath("$.message").value("Simulated error for observability demo"));
+        org.mockito.Mockito.verifyNoInteractions(client);
+    }
+
+    @Test
     void traceReturnsRecommendedOrder() throws Exception {
         RecommendClient client = mock(RecommendClient.class);
         when(client.rank(1L, List.of(101L, 102L, 103L, 104L, 105L)))
