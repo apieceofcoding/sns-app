@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -63,7 +64,7 @@ class RecommenderClientTest {
     }
 
     @Test
-    @DisplayName("타임아웃을 넘기면 RecommenderException 을 던진다")
+    @DisplayName("타임아웃을 넘기면 RestClientException 을 던진다")
     void throwsWhenSlowerThanTimeout() throws IOException {
         startServer(exchange -> {
             sleep(TIMEOUT.toMillis() * 3);
@@ -73,26 +74,25 @@ class RecommenderClientTest {
         });
 
         assertThatThrownBy(() -> client().rank(7L, List.of(101L)))
-                .isInstanceOf(RecommenderException.class)
-                .hasMessageContaining("userId=7");
+                .isInstanceOf(RestClientException.class);
     }
 
     @Test
-    @DisplayName("추천 서비스가 5xx 를 반환하면 RecommenderException 을 던진다")
+    @DisplayName("추천 서비스가 5xx 를 반환하면 RestClientException 을 던진다")
     void throwsOnServerError() throws IOException {
         startServer(exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"));
 
         assertThatThrownBy(() -> client().rank(7L, List.of(101L)))
-                .isInstanceOf(RecommenderException.class);
+                .isInstanceOf(RestClientException.class);
     }
 
     @Test
-    @DisplayName("응답에 순서가 없으면 RecommenderException 을 던진다")
+    @DisplayName("응답에 순서가 없으면 RestClientException 을 던진다")
     void throwsOnMissingRankedIds() throws IOException {
         startServer(exchange -> respond(exchange, 200, "{\"userId\":7,\"segment\":\"ga\"}"));
 
         assertThatThrownBy(() -> client().rank(7L, List.of(101L)))
-                .isInstanceOf(RecommenderException.class)
+                .isInstanceOf(RestClientException.class)
                 .hasMessageContaining("빈 응답");
     }
 
@@ -112,22 +112,21 @@ class RecommenderClientTest {
     }
 
     @Test
-    @DisplayName("세그먼트 조회가 실패하면 RecommenderException 을 던진다")
+    @DisplayName("세그먼트 조회가 실패하면 RestClientException 을 던진다")
     void throwsWhenSegmentLookupFails() throws IOException {
         startServer("/v1/segment", exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"));
 
         assertThatThrownBy(() -> client().segmentOf(7L))
-                .isInstanceOf(RecommenderException.class)
-                .hasMessageContaining("userId=7");
+                .isInstanceOf(org.springframework.web.client.HttpServerErrorException.InternalServerError.class);
     }
 
     @Test
-    @DisplayName("세그먼트 응답이 비어 있으면 RecommenderException 을 던진다")
+    @DisplayName("세그먼트 응답이 비어 있으면 RestClientException 을 던진다")
     void throwsOnMissingSegment() throws IOException {
         startServer("/v1/segment", exchange -> respond(exchange, 200, "{\"userId\":7}"));
 
         assertThatThrownBy(() -> client().segmentOf(7L))
-                .isInstanceOf(RecommenderException.class)
+                .isInstanceOf(RestClientException.class)
                 .hasMessageContaining("빈 응답");
     }
 

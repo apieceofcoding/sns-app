@@ -2,7 +2,7 @@ package com.apiece.springboot_sns_sample.api;
 
 import com.apiece.springboot_sns_sample.config.recommender.RecommenderProperties;
 import com.apiece.springboot_sns_sample.domain.recommendation.RecommenderClient;
-import com.apiece.springboot_sns_sample.domain.recommendation.RecommenderException;
+import org.springframework.web.client.RestClientException;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
@@ -54,7 +54,7 @@ public class FeedDemoController {
                     "status", "ok",
                     "segment", segment,
                     "postIds", rankedPostIds));
-        } catch (RecommenderException e) {
+        } catch (RestClientException e) {
             span.setStatus(StatusCode.ERROR, "recommendation timeout");
             span.recordException(e);
             log.error("추천 서비스 호출 실패 userId={} segment={} timeout={}ms",
