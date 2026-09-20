@@ -1,5 +1,7 @@
 package com.apiece.springboot_sns_sample.api;
 
+import com.apiece.springboot_sns_sample.api.demo.ErrorResponse;
+import com.apiece.springboot_sns_sample.api.demo.TraceResponse;
 import com.apiece.springboot_sns_sample.domain.recommendation.RecommendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @RestController
@@ -24,7 +25,7 @@ public class ObservabilityDemoController {
     private final RecommendService recommendService;
 
     @GetMapping("/trace")
-    public ResponseEntity<Map<String, Object>> trace(
+    public ResponseEntity<TraceResponse> trace(
             @RequestParam(defaultValue = "hello") String message,
             @RequestParam(defaultValue = "1") Long userId
     ) {
@@ -34,17 +35,13 @@ public class ObservabilityDemoController {
 
         log.info("[STEP 3] 요청 처리 완료");
 
-        return ResponseEntity.ok(Map.of(
-                "status", "ok",
-                "message", message,
-                "rankedPostIds", rankedPostIds
-        ));
+        return ResponseEntity.ok(new TraceResponse("ok", message, rankedPostIds));
     }
 
     @ExceptionHandler(RestClientException.class)
-    public ResponseEntity<Map<String, String>> recommendationFailed(RestClientException exception) {
+    public ResponseEntity<ErrorResponse> recommendationFailed(RestClientException exception) {
         log.error("추천 서비스 호출 실패", exception);
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(Map.of("status", "error", "message", "추천 서비스 호출에 실패했습니다"));
+                .body(new ErrorResponse("error", "추천 서비스 호출에 실패했습니다"));
     }
 }

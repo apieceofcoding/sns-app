@@ -25,6 +25,7 @@ class ObservabilityDemoControllerTest {
         MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client))).build()
                 .perform(get("/api/v1/demo/trace"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ok"))
                 .andExpect(jsonPath("$.message").value("hello"))
                 .andExpect(jsonPath("$.rankedPostIds[0]").value(105));
     }
@@ -38,6 +39,7 @@ class ObservabilityDemoControllerTest {
         MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client))).build()
                 .perform(get("/api/v1/demo/trace").param("userId", "3"))
                 .andExpect(status().isBadGateway())
-                .andExpect(jsonPath("$.status").value("error"));
+                .andExpect(jsonPath("$.status").value("error"))
+                .andExpect(jsonPath("$.message").value("추천 서비스 호출에 실패했습니다"));
     }
 }
