@@ -4,6 +4,9 @@ import com.apiece.springboot_sns_sample.domain.recommendation.RecommenderClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,13 +32,10 @@ public class ObservabilityDemoController {
     ) {
         log.info("[STEP 1] 요청 수신 message={} userId={}", message, userId);
 
-        log.info("[STEP 2] 비즈니스 로직 처리");
-        simulateWork(50);
-
-        log.info("[STEP 3] 추천 서비스 호출");
+        log.info("[STEP 2] 추천 서비스 호출");
         List<Long> rankedPostIds = recommenderClient.rank(userId, DEMO_CANDIDATES);
 
-        log.info("[STEP 4] 요청 처리 완료");
+        log.info("[STEP 3] 요청 처리 완료");
 
         return ResponseEntity.ok(Map.of(
                 "status", "ok",
@@ -44,13 +44,19 @@ public class ObservabilityDemoController {
         ));
     }
 
+    @ExceptionHandler(RestClientException.class)
+    public ResponseEntity<Map<String, String>> recommendationFailed(RestClientException exception) {
+        log.error("추천 서비스 호출 실패", exception);
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("status", "error", "message", "추천 서비스 호출에 실패했습니다"));
+    }
+
     @GetMapping("/error")
     public ResponseEntity<Map<String, String>> error() {
         log.info("[STEP 1] 오류 재현 요청 수신");
         log.warn("[STEP 2] 처리 중 이상 징후 발견");
 
         try {
-            simulateWork(20);
             throw new RuntimeException("Simulated error for observability demo");
         } catch (RuntimeException e) {
             log.error("[STEP 3] 오류 발생: {}", e.getMessage(), e);
@@ -58,14 +64,6 @@ public class ObservabilityDemoController {
                     "status", "error",
                     "message", e.getMessage()
             ));
-        }
-    }
-
-    private void simulateWork(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
         }
     }
 }
