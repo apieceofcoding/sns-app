@@ -25,4 +25,5 @@ if curl -fsS "http://sns.localhost/api/v1/demo/trace?userId=1" 2>/dev/null; then
 else
     echo "  http://sns.localhost 에 접근할 수 없습니다. 클러스터와 Ingress 를 확인하세요." >&2
     hosts_hint
+    exit 1
 fi
