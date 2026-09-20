@@ -1,13 +1,21 @@
 package com.apiece.springboot_sns_sample.domain.recommendation;
 
-import com.apiece.springboot_sns_sample.config.recommender.RecommenderConfig;
-import com.apiece.springboot_sns_sample.config.recommender.RecommenderProperties;
+import com.apiece.springboot_sns_sample.config.recommend.RecommendConfig;
+import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.http.client.autoconfigure.HttpClientAutoConfiguration;
+import org.springframework.boot.http.client.autoconfigure.imperative.ImperativeHttpClientAutoConfiguration;
+import org.springframework.boot.restclient.autoconfigure.RestClientAutoConfiguration;
+import org.springframework.boot.restclient.RestClientCustomizer;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.HttpClientSettings;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -22,7 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class RecommenderClientTest {
+class RecommendClientTest {
 
     private static final Duration TIMEOUT = Duration.ofMillis(200);
 
@@ -96,15 +104,42 @@ class RecommenderClientTest {
                 .hasMessageContaining("빈 응답");
     }
 
-    private RecommenderClient client() {
-        RecommenderProperties properties = new RecommenderProperties(
+    @Test
+    @DisplayName("Boot 자동 구성과 RestClient 커스터마이저를 유지한다")
+    void preservesBootAutoConfiguration() throws IOException {
+        AtomicReference<String> header = new AtomicReference<>();
+        startServer(exchange -> {
+            header.set(exchange.getRequestHeaders().getFirst("X-Lesson"));
+            respond(exchange, 200, """
+                    {"userId":7,"segment":"ga","rankedPostIds":[101],"tookMs":40}
+                    """);
+        });
+
+        new ApplicationContextRunner()
+                .withConfiguration(AutoConfigurations.of(HttpClientAutoConfiguration.class,
+                        ImperativeHttpClientAutoConfiguration.class, RestClientAutoConfiguration.class))
+                .withUserConfiguration(RecommendConfig.class)
+                .withBean(RecommendProperties.class, () -> new RecommendProperties(
+                        "http://localhost:" + server.getAddress().getPort(), TIMEOUT, TIMEOUT))
+                .withBean(RestClientCustomizer.class, () -> builder -> builder.defaultHeader("X-Lesson", "traces"))
+                .run(context -> {
+                    assertThat(context).hasNotFailed().hasSingleBean(RestClient.class);
+                    assertThat(new RecommendClient(context.getBean(RestClient.class)).rank(7L, List.of(101L)))
+                            .containsExactly(101L);
+                    assertThat(header.get()).isEqualTo("traces");
+                });
+    }
+
+    private RecommendClient client() {
+        RecommendProperties properties = new RecommendProperties(
                 "http://localhost:" + server.getAddress().getPort(),
                 TIMEOUT,
                 TIMEOUT
         );
-        RestClient restClient = new RecommenderConfig()
-                .recommenderRestClient(RestClient.builder(), properties);
-        return new RecommenderClient(restClient);
+        RestClient restClient = new RecommendConfig()
+                .recommendRestClient(RestClient.builder(), ClientHttpRequestFactoryBuilder.detect(),
+                        HttpClientSettings.defaults(), properties);
+        return new RecommendClient(restClient);
     }
 
     private void startServer(HttpHandler handler) throws IOException {
