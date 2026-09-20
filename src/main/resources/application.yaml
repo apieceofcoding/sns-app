@@ -17,14 +17,20 @@ spring:
   session:
     store-type: redis
 management:
-  logging:
-    export:
-      otlp:
-        enabled: false
   otlp:
     metrics:
       export:
         enabled: false
+  logging:
+    export:
+      otlp:
+        enabled: false
+  tracing:
+    export:
+      otlp:
+        enabled: true
+    sampling:
+      probability: 1.0
   metrics:
     tags:
       application: sns-app
@@ -43,12 +49,6 @@ management:
         otlp:
           endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces"
           transport: http
-  tracing:
-    export:
-      otlp:
-        enabled: true
-    sampling:
-      probability: 1.0
 recommender:
   base-url: "${RECOMMENDER_BASE_URL:http://localhost:8081}"
   connect-timeout: 200ms
