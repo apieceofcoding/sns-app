@@ -1,4 +1,4 @@
-package com.apiece.springboot_sns_sample.domain.recommendation;
+package com.apiece.springboot_sns_sample.domain.recommend;
 
 import com.apiece.springboot_sns_sample.config.recommend.RecommendConfig;
 import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
