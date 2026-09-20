@@ -1,4 +1,4 @@
-package com.apiece.springboot_sns_sample.domain.recommendation;
+package com.apiece.springboot_sns_sample.domain.recommend;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

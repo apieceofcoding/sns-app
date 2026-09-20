@@ -1,7 +1,7 @@
 package com.apiece.springboot_sns_sample.api;
 
 import com.apiece.springboot_sns_sample.api.demo.TraceResponse;
-import com.apiece.springboot_sns_sample.domain.recommendation.RecommendService;
+import com.apiece.springboot_sns_sample.domain.recommend.RecommendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
