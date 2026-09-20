@@ -49,8 +49,8 @@ management:
         otlp:
           endpoint: "${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces"
           transport: http
-recommender:
-  base-url: "${RECOMMENDER_BASE_URL:http://localhost:8081}"
+recommend:
+  base-url: "${RECOMMEND_BASE_URL:http://localhost:8081}"
   connect-timeout: 200ms
   timeout: 200ms
 logging:

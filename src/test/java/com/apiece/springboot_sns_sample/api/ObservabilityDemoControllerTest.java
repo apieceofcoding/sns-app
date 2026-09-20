@@ -1,7 +1,7 @@
 package com.apiece.springboot_sns_sample.api;
 
-import com.apiece.springboot_sns_sample.domain.recommendation.RecommendClient;
-import com.apiece.springboot_sns_sample.domain.recommendation.RecommendService;
+import com.apiece.springboot_sns_sample.domain.recommend.RecommendClient;
+import com.apiece.springboot_sns_sample.domain.recommend.RecommendService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 

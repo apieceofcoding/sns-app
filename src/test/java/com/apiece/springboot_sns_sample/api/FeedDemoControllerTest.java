@@ -2,7 +2,7 @@ package com.apiece.springboot_sns_sample.api;
 
 import com.apiece.springboot_sns_sample.config.recommend.RecommendConfig;
 import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
-import com.apiece.springboot_sns_sample.domain.recommendation.RecommendClient;
+import com.apiece.springboot_sns_sample.domain.recommend.RecommendClient;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -83,11 +83,11 @@ class FeedDemoControllerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getBody())
-                .containsEntry("reason", "recommendation_timeout")
+                .containsEntry("reason", "recommend_timeout")
                 .containsEntry("segment", "beta");
 
         SpanData span = endedSpan();
-        assertThat(span.getName()).isEqualTo("recommendation-fetch");
+        assertThat(span.getName()).isEqualTo("recommend-fetch");
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
         assertThat(span.getAttributes().get(USER_SEGMENT)).isEqualTo("beta");
         assertThat(span.getAttributes().get(TIMEOUT_MS)).isEqualTo(TIMEOUT.toMillis());

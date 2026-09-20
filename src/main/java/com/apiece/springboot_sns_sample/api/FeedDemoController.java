@@ -1,7 +1,7 @@
 package com.apiece.springboot_sns_sample.api;
 
 import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
-import com.apiece.springboot_sns_sample.domain.recommendation.RecommendClient;
+import com.apiece.springboot_sns_sample.domain.recommend.RecommendClient;
 import org.springframework.web.client.RestClientException;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -40,7 +40,7 @@ public class FeedDemoController {
 
     @GetMapping("/feed")
     public ResponseEntity<Map<String, Object>> feed(@RequestParam(defaultValue = "1") long userId) {
-        Span span = tracer.spanBuilder("recommendation-fetch").startSpan();
+        Span span = tracer.spanBuilder("recommend-fetch").startSpan();
         String segment = UNKNOWN_SEGMENT;
         try (Scope ignored = span.makeCurrent()) {
             span.setAttribute("user.id", userId);
@@ -55,13 +55,13 @@ public class FeedDemoController {
                     "segment", segment,
                     "postIds", rankedPostIds));
         } catch (RestClientException e) {
-            span.setStatus(StatusCode.ERROR, "recommendation timeout");
+            span.setStatus(StatusCode.ERROR, "recommend timeout");
             span.recordException(e);
             log.error("추천 서비스 호출 실패 userId={} segment={} timeout={}ms",
                     userId, segment, timeoutMs, e);
             return ResponseEntity.status(503).body(Map.of(
                     "status", "error",
-                    "reason", "recommendation_timeout",
+                    "reason", "recommend_timeout",
                     "segment", segment));
         } finally {
             span.setAttribute("user.segment", segment);

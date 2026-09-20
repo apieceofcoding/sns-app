@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
 
-@ConfigurationProperties(prefix = "recommender")
+@ConfigurationProperties(prefix = "recommend")
 public record RecommendProperties(
         String baseUrl,
         Duration connectTimeout,
