@@ -1,8 +1,8 @@
 package com.apiece.springboot_sns_sample.api;
 
-import com.apiece.springboot_sns_sample.config.recommender.RecommenderConfig;
-import com.apiece.springboot_sns_sample.config.recommender.RecommenderProperties;
-import com.apiece.springboot_sns_sample.domain.recommendation.RecommenderClient;
+import com.apiece.springboot_sns_sample.config.recommend.RecommendConfig;
+import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
+import com.apiece.springboot_sns_sample.domain.recommendation.RecommendClient;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -21,6 +21,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
+import org.springframework.boot.http.client.ClientHttpRequestFactoryBuilder;
+import org.springframework.boot.http.client.HttpClientSettings;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -55,7 +57,7 @@ class FeedDemoControllerTest {
 
     @Test
     @DisplayName("세그먼트는 앱이 계산하지 않고 추천 서비스가 판정한 값을 그대로 쓴다")
-    void usesSegmentFromRecommender() throws IOException {
+    void usesSegmentFromRecommend() throws IOException {
         startServer(
                 exchange -> respond(exchange, 200, "{\"userId\":7,\"segment\":\"beta\"}"),
                 exchange -> respond(exchange, 200, FAST_RANK));
@@ -128,19 +130,20 @@ class FeedDemoControllerTest {
     }
 
     private FeedDemoController controller() {
-        RecommenderProperties properties = new RecommenderProperties(
+        RecommendProperties properties = new RecommendProperties(
                 "http://localhost:" + server.getAddress().getPort(),
                 TIMEOUT,
                 TIMEOUT
         );
-        RestClient restClient = new RecommenderConfig()
-                .recommenderRestClient(RestClient.builder(), properties);
+        RestClient restClient = new RecommendConfig()
+                .recommendRestClient(RestClient.builder(), ClientHttpRequestFactoryBuilder.detect(),
+                        HttpClientSettings.defaults(), properties);
 
         OpenTelemetry openTelemetry = OpenTelemetrySdk.builder()
                 .setTracerProvider(SdkTracerProvider.builder().addSpanProcessor(spans).build())
                 .build();
 
-        return new FeedDemoController(openTelemetry, new RecommenderClient(restClient), properties);
+        return new FeedDemoController(openTelemetry, new RecommendClient(restClient), properties);
     }
 
     private SpanData endedSpan() {

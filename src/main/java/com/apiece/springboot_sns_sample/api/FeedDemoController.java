@@ -1,7 +1,7 @@
 package com.apiece.springboot_sns_sample.api;
 
-import com.apiece.springboot_sns_sample.config.recommender.RecommenderProperties;
-import com.apiece.springboot_sns_sample.domain.recommendation.RecommenderClient;
+import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
+import com.apiece.springboot_sns_sample.domain.recommendation.RecommendClient;
 import org.springframework.web.client.RestClientException;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.trace.Span;
@@ -27,15 +27,15 @@ public class FeedDemoController {
     private static final String UNKNOWN_SEGMENT = "unknown";
 
     private final Tracer tracer;
-    private final RecommenderClient recommenderClient;
+    private final RecommendClient recommendClient;
     private final long timeoutMs;
 
     public FeedDemoController(OpenTelemetry openTelemetry,
-                              RecommenderClient recommenderClient,
-                              RecommenderProperties recommenderProperties) {
+                              RecommendClient recommendClient,
+                              RecommendProperties recommendProperties) {
         this.tracer = openTelemetry.getTracer("sns-app.feed-demo");
-        this.recommenderClient = recommenderClient;
-        this.timeoutMs = recommenderProperties.timeout().toMillis();
+        this.recommendClient = recommendClient;
+        this.timeoutMs = recommendProperties.timeout().toMillis();
     }
 
     @GetMapping("/feed")
@@ -46,8 +46,8 @@ public class FeedDemoController {
             span.setAttribute("user.id", userId);
             span.setAttribute("timeout.ms", timeoutMs);
 
-            segment = recommenderClient.segmentOf(userId);
-            List<Long> rankedPostIds = recommenderClient.rank(userId, FEED_CANDIDATES);
+            segment = recommendClient.segmentOf(userId);
+            List<Long> rankedPostIds = recommendClient.rank(userId, FEED_CANDIDATES);
 
             log.info("피드 응답 완료 userId={} segment={} items={}", userId, segment, rankedPostIds.size());
             return ResponseEntity.ok(Map.of(

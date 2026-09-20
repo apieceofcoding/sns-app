@@ -1,6 +1,6 @@
 package com.apiece.springboot_sns_sample.api;
 
-import com.apiece.springboot_sns_sample.domain.recommendation.RecommenderClient;
+import com.apiece.springboot_sns_sample.domain.recommendation.RecommendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -21,9 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/demo")
 public class ObservabilityDemoController {
 
-    private static final List<Long> DEMO_CANDIDATES = List.of(101L, 102L, 103L, 104L, 105L);
-
-    private final RecommenderClient recommenderClient;
+    private final RecommendService recommendService;
 
     @GetMapping("/trace")
     public ResponseEntity<Map<String, Object>> trace(
@@ -32,8 +30,7 @@ public class ObservabilityDemoController {
     ) {
         log.info("[STEP 1] 요청 수신 message={} userId={}", message, userId);
 
-        log.info("[STEP 2] 추천 서비스 호출");
-        List<Long> rankedPostIds = recommenderClient.rank(userId, DEMO_CANDIDATES);
+        List<Long> rankedPostIds = recommendService.recommend(userId);
 
         log.info("[STEP 3] 요청 처리 완료");
 
