@@ -11,12 +11,12 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class RecommenderClient {
+public class RecommendClient {
 
-    private final RestClient recommenderRestClient;
+    private final RestClient recommendRestClient;
 
     public List<Long> rank(Long userId, List<Long> postIds) {
-        RankResponse response = recommenderRestClient.post()
+        RankResponse response = recommendRestClient.post()
                 .uri("/v1/rank")
                 .body(new RankRequest(userId, postIds))
                 .retrieve()
