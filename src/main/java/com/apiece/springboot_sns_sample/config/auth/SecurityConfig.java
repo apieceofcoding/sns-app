@@ -1,5 +1,6 @@
 package com.apiece.springboot_sns_sample.config.auth;
 
+import jakarta.servlet.DispatcherType;
 import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.context.annotation.Bean;
@@ -59,6 +60,7 @@ public class SecurityConfig implements BeanClassLoaderAware {
                         .sessionRegistry(sessionRegistry)
                 )
                 .authorizeHttpRequests(authorize -> authorize
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(
                                 "/api/v1/users/signup",
                                 "/api/v1/login",
