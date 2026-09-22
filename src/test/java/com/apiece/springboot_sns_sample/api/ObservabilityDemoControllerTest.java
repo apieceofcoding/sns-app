@@ -7,13 +7,37 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class ObservabilityDemoControllerTest {
+
+    @Test
+    void okReturnsWithoutCallingRecommend() throws Exception {
+        RecommendClient client = mock(RecommendClient.class);
+        MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client))).build()
+                .perform(get("/api/v1/demo/ok"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("ok"));
+        org.mockito.Mockito.verifyNoInteractions(client);
+    }
+
+    @Test
+    void slowTakesAtLeastTwoSecondsWithoutCallingRecommend() throws Exception {
+        RecommendClient client = mock(RecommendClient.class);
+        var mvc = MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client))).build();
+        long start = System.nanoTime();
+        mvc.perform(get("/api/v1/demo/slow"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("slow"));
+        assertTrue(System.nanoTime() - start >= 2_000_000_000L);
+        org.mockito.Mockito.verifyNoInteractions(client);
+    }
 
     @Test
     void errorReturnsInternalServerError() throws Exception {

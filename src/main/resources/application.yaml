@@ -32,6 +32,9 @@ management:
     sampling:
       probability: 1.0
   metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
     tags:
       application: sns-app
   health:
