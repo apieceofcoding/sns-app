@@ -46,7 +46,8 @@ class ObservabilityDemoControllerTest {
         MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client))).build()
                 .perform(get("/api/v1/demo/error"))
                 .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.status").value("error"))
+                .andExpect(jsonPath("$.code").value("error"))
+                .andExpect(jsonPath("$.status").doesNotExist())
                 .andExpect(jsonPath("$.message").value("Simulated error for observability demo"));
         org.mockito.Mockito.verifyNoInteractions(client);
     }
