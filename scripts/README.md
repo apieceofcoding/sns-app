@@ -23,7 +23,9 @@ cd ../part-2
 | `part-5` | `./run.sh` | 배포된 앱의 메트릭 확인 |
 | `part-6` | `./run.sh` | 배포된 앱의 로그 확인 |
 | `part-7` | `./run.sh` | 트레이스 요청 |
-| `part-8` | `./run.sh` | 장애 트래픽 발생 |
+| `part-8` | `./run.sh rate` | 요청량 증가와 복구 |
+| `part-8` | `./run.sh error` | 오류율 증가와 복구 |
+| `part-8` | `./run.sh latency` | 응답 지연과 복구 |
 | `part-9` | `./run.sh 60` | 장애 분석용 요청 60회 |
 
 기본 앱만 실행하려면 `sns-app` 폴더에서 `./scripts/start.sh`를 사용해요.
