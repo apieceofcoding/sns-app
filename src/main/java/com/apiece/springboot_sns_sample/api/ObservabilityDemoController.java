@@ -35,6 +35,17 @@ public class ObservabilityDemoController {
         return ResponseEntity.ok(new TraceResponse(message, rankedPostIds));
     }
 
+    @GetMapping("/ok")
+    public ResponseEntity<String> ok() {
+        return ResponseEntity.ok("ok");
+    }
+
+    @GetMapping("/slow")
+    public ResponseEntity<String> slow() throws InterruptedException {
+        Thread.sleep(2000);
+        return ResponseEntity.ok("slow");
+    }
+
     @GetMapping("/error")
     public ResponseEntity<ErrorResponse> error() {
         log.info("[STEP 1] 오류 재현 요청 수신");
