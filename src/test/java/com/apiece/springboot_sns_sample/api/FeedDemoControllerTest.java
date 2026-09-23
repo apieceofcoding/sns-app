@@ -1,6 +1,12 @@
 package com.apiece.springboot_sns_sample.api;
 
 import com.apiece.springboot_sns_sample.config.recommend.RecommendConfig;
+import com.apiece.springboot_sns_sample.controller.dto.FeedResponse;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.json.JsonCompareMode;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
 import com.apiece.springboot_sns_sample.domain.recommend.RecommendClient;
 import com.sun.net.httpserver.HttpExchange;
@@ -30,7 +36,6 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -62,10 +67,10 @@ class FeedDemoControllerTest {
                 exchange -> respond(exchange, 200, "{\"userId\":7,\"segment\":\"beta\"}"),
                 exchange -> respond(exchange, 200, FAST_RANK));
 
-        ResponseEntity<Map<String, Object>> response = controller().feed(7L);
+        ResponseEntity<FeedResponse> response = controller().feed(7L);
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
-        assertThat(response.getBody()).containsEntry("segment", "beta");
+        assertThat(response.getBody().segment()).isEqualTo("beta");
         assertThat(endedSpan().getAttributes().get(USER_SEGMENT)).isEqualTo("beta");
     }
 
@@ -79,12 +84,11 @@ class FeedDemoControllerTest {
                     respond(exchange, 200, FAST_RANK);
                 });
 
-        ResponseEntity<Map<String, Object>> response = controller().feed(3L);
+        ResponseEntity<FeedResponse> response = controller().feed(3L);
 
         assertThat(response.getStatusCode().value()).isEqualTo(503);
-        assertThat(response.getBody())
-                .containsEntry("reason", "recommend_timeout")
-                .containsEntry("segment", "beta");
+        assertThat(response.getBody().reason()).isEqualTo("recommend_timeout");
+        assertThat(response.getBody().segment()).isEqualTo("beta");
 
         SpanData span = endedSpan();
         assertThat(span.getName()).isEqualTo("recommend-fetch");
@@ -104,10 +108,10 @@ class FeedDemoControllerTest {
                     respond(exchange, 200, FAST_RANK);
                 });
 
-        ResponseEntity<Map<String, Object>> response = controller().feed(3L);
+        ResponseEntity<FeedResponse> response = controller().feed(3L);
 
         assertThat(response.getStatusCode().value()).isEqualTo(503);
-        assertThat(response.getBody()).containsEntry("segment", "unknown");
+        assertThat(response.getBody().segment()).isEqualTo("unknown");
         assertThat(rankCalls).hasValue(0);
 
         SpanData span = endedSpan();
@@ -127,6 +131,36 @@ class FeedDemoControllerTest {
         assertThat(spans.ended).hasSize(1);
         assertThat(endedSpan().getTotalAttributeCount())
                 .isEqualTo(endedSpan().getAttributes().size());
+    }
+
+    @Test
+    @DisplayName("피드 성공 응답은 기존 JSON 필드를 유지하고 reason을 포함하지 않는다")
+    void preservesSuccessJson() throws Exception {
+        startServer(
+                exchange -> respond(exchange, 200, "{\"userId\":1,\"segment\":\"ga\"}"),
+                exchange -> respond(exchange, 200, FAST_RANK));
+
+        MockMvcBuilders.standaloneSetup(controller()).build()
+                .perform(get("/api/v1/demo/feed"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("""
+                        {"status":"ok","segment":"ga","postIds":[101]}
+                        """, JsonCompareMode.STRICT));
+    }
+
+    @Test
+    @DisplayName("피드 실패 응답은 기존 JSON 필드를 유지하고 postIds를 포함하지 않는다")
+    void preservesFailureJson() throws Exception {
+        startServer(
+                exchange -> respond(exchange, 200, "{\"userId\":3,\"segment\":\"beta\"}"),
+                exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"));
+
+        MockMvcBuilders.standaloneSetup(controller()).build()
+                .perform(get("/api/v1/demo/feed").param("userId", "3"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(content().json("""
+                        {"status":"error","segment":"beta","reason":"recommend_timeout"}
+                        """, JsonCompareMode.STRICT));
     }
 
     private FeedDemoController controller() {
