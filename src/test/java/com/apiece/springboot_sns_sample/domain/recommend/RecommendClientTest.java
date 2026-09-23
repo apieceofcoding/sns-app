@@ -105,40 +105,6 @@ class RecommendClientTest {
     }
 
     @Test
-    @DisplayName("세그먼트는 직접 계산하지 않고 추천 서비스가 판정한 값을 쓴다")
-    void asksRecommendForSegment() throws IOException {
-        AtomicReference<String> received = new AtomicReference<>();
-        startServer("/v1/segment", exchange -> {
-            received.set(exchange.getRequestURI().getQuery());
-            respond(exchange, 200, "{\"userId\":7,\"segment\":\"beta\"}");
-        });
-
-        String segment = client().segmentOf(7L);
-
-        assertThat(received.get()).isEqualTo("userId=7");
-        assertThat(segment).isEqualTo("beta");
-    }
-
-    @Test
-    @DisplayName("세그먼트 조회가 실패하면 RestClientException 을 던진다")
-    void throwsWhenSegmentLookupFails() throws IOException {
-        startServer("/v1/segment", exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"));
-
-        assertThatThrownBy(() -> client().segmentOf(7L))
-                .isInstanceOf(org.springframework.web.client.HttpServerErrorException.InternalServerError.class);
-    }
-
-    @Test
-    @DisplayName("세그먼트 응답이 비어 있으면 RestClientException 을 던진다")
-    void throwsOnMissingSegment() throws IOException {
-        startServer("/v1/segment", exchange -> respond(exchange, 200, "{\"userId\":7}"));
-
-        assertThatThrownBy(() -> client().segmentOf(7L))
-                .isInstanceOf(RestClientException.class)
-                .hasMessageContaining("빈 응답");
-    }
-
-    @Test
     @DisplayName("Boot 자동 구성과 RestClient 커스터마이저를 유지한다")
     void preservesBootAutoConfiguration() throws IOException {
         AtomicReference<String> header = new AtomicReference<>();
@@ -177,12 +143,8 @@ class RecommendClientTest {
     }
 
     private void startServer(HttpHandler handler) throws IOException {
-        startServer("/v1/rank", handler);
-    }
-
-    private void startServer(String path, HttpHandler handler) throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-        server.createContext(path, exchange -> {
+        server.createContext("/v1/rank", exchange -> {
             try {
                 handler.handle(exchange);
             } finally {

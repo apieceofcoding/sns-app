@@ -53,7 +53,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FeedDemoControllerTest {
 
     private static final Duration TIMEOUT = Duration.ofMillis(200);
-    private static final AttributeKey<String> USER_SEGMENT = AttributeKey.stringKey("user.segment");
     private static final AttributeKey<Long> TIMEOUT_MS = AttributeKey.longKey("timeout.ms");
 
     private static final String FAST_RANK = "{\"userId\":7,\"segment\":\"ga\",\"rankedPostIds\":[101],\"tookMs\":40}";
@@ -78,25 +77,9 @@ class FeedDemoControllerTest {
     }
 
     @Test
-    @DisplayName("세그먼트는 앱이 계산하지 않고 추천 서비스가 판정한 값을 그대로 쓴다")
-    void usesSegmentFromRecommend() throws IOException {
+    @DisplayName("추천 타임아웃은 503으로 응답하고 Span에 오류와 제한 시간을 남긴다")
+    void recordsRankTimeout() throws IOException {
         startServer(
-                exchange -> respond(exchange, 200, "{\"userId\":7,\"segment\":\"beta\"}"),
-                exchange -> respond(exchange, 200, FAST_RANK));
-
-        ResponseEntity<FeedResponse> response = controller().feed(7L);
-
-        assertThat(Span.current().getSpanContext().isValid()).isFalse();
-        assertThat(response.getStatusCode().value()).isEqualTo(200);
-        assertThat(response.getBody().segment()).isEqualTo("beta");
-        assertThat(endedSpan().getAttributes().get(USER_SEGMENT)).isEqualTo("beta");
-    }
-
-    @Test
-    @DisplayName("추천 호출이 타임아웃으로 실패해도 조회해둔 세그먼트가 503 응답과 Span 에 남는다")
-    void keepsSegmentWhenRankTimesOut() throws IOException {
-        startServer(
-                exchange -> respond(exchange, 200, "{\"userId\":3,\"segment\":\"beta\"}"),
                 exchange -> {
                     sleep(TIMEOUT.toMillis() * 3);
                     respond(exchange, 200, FAST_RANK);
@@ -106,81 +89,54 @@ class FeedDemoControllerTest {
 
         assertThat(Span.current().getSpanContext().isValid()).isFalse();
         assertThat(response.getStatusCode().value()).isEqualTo(503);
-        assertThat(response.getBody().segment()).isEqualTo("beta");
 
         SpanData span = endedSpan();
         assertThat(span.getName()).isEqualTo("recommend-fetch");
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
         assertThat(span.getEvents()).anySatisfy(event -> assertThat(event.getName()).isEqualTo("exception"));
-        assertThat(span.getAttributes().get(USER_SEGMENT)).isEqualTo("beta");
         assertThat(span.getAttributes().get(TIMEOUT_MS)).isEqualTo(TIMEOUT.toMillis());
     }
 
     @Test
-    @DisplayName("세그먼트 조회 자체가 실패하면 unknown 으로 남고 추천 호출은 시도하지 않는다")
-    void marksSegmentUnknownWhenLookupFails() throws IOException {
-        AtomicInteger rankCalls = new AtomicInteger();
-        startServer(
-                exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"),
-                exchange -> {
-                    rankCalls.incrementAndGet();
-                    respond(exchange, 200, FAST_RANK);
-                });
+    @DisplayName("피드는 추천 API를 한 번만 호출한다")
+    void callsRankOnce() throws IOException {
+        AtomicInteger calls = new AtomicInteger();
+        startServer(exchange -> {
+            calls.incrementAndGet();
+            assertThat(exchange.getRequestMethod()).isEqualTo("POST");
+            respond(exchange, 200, FAST_RANK);
+        });
 
-        ResponseEntity<FeedResponse> response = controller().feed(3L);
-
-        assertThat(Span.current().getSpanContext().isValid()).isFalse();
-        assertThat(response.getStatusCode().value()).isEqualTo(503);
-        assertThat(response.getBody().segment()).isEqualTo("unknown");
-        assertThat(rankCalls).hasValue(0);
-
-        SpanData span = endedSpan();
-        assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
-        assertThat(span.getEvents()).anySatisfy(event -> assertThat(event.getName()).isEqualTo("exception"));
-        assertThat(span.getAttributes().get(USER_SEGMENT)).isEqualTo("unknown");
-    }
-
-    @Test
-    @DisplayName("user.segment 는 Span 하나에 한 번만 기록된다")
-    void recordsSegmentExactlyOnce() throws IOException {
-        startServer(
-                exchange -> respond(exchange, 200, "{\"userId\":7,\"segment\":\"ga\"}"),
-                exchange -> respond(exchange, 200, FAST_RANK));
-
-        controller().feed(7L);
-
+        assertThat(controller().feed(7L).getStatusCode().value()).isEqualTo(200);
+        assertThat(calls).hasValue(1);
         assertThat(spans.ended).hasSize(1);
-        assertThat(endedSpan().getTotalAttributeCount())
-                .isEqualTo(endedSpan().getAttributes().size());
     }
 
     @Test
-    @DisplayName("피드 성공 응답은 segment와 postIds만 포함한다")
+    @DisplayName("피드 성공 응답은 postIds만 포함한다")
     void returnsOnlyFeedFieldsOnSuccess() throws Exception {
         startServer(
-                exchange -> respond(exchange, 200, "{\"userId\":1,\"segment\":\"ga\"}"),
                 exchange -> respond(exchange, 200, FAST_RANK));
 
         MockMvcBuilders.standaloneSetup(controller()).build()
                 .perform(get("/api/v1/demo/feed"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("""
-                        {"segment":"ga","postIds":[101]}
+                        {"postIds":[101]}
                         """, JsonCompareMode.STRICT));
     }
 
     @Test
-    @DisplayName("피드 실패 응답은 segment와 null postIds를 포함하고 HTTP 503을 반환한다")
+    @DisplayName("피드 실패 응답은 null postIds와 HTTP 503을 반환한다")
     void returnsNullPostIdsOnFailure() throws Exception {
         startServer(
-                exchange -> respond(exchange, 200, "{\"userId\":3,\"segment\":\"beta\"}"),
                 exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"));
 
         MockMvcBuilders.standaloneSetup(controller()).build()
                 .perform(get("/api/v1/demo/feed").param("userId", "3"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(content().json("""
-                        {"segment":"beta","postIds":null}
+                        {"postIds":null}
                         """, JsonCompareMode.STRICT));
     }
 
@@ -188,7 +144,6 @@ class FeedDemoControllerTest {
     @DisplayName("어노테이션 Span은 기존 요청 Span의 자식으로 생성되고 종료 후 부모로 복원된다")
     void createsChildSpanAndRestoresParent() throws IOException {
         startServer(
-                exchange -> respond(exchange, 200, "{\"userId\":7,\"segment\":\"ga\"}"),
                 exchange -> respond(exchange, 200, FAST_RANK));
         FeedDemoController controller = controller();
         Span parent = openTelemetry.getTracer("test").spanBuilder("http-request").startSpan();
@@ -241,9 +196,8 @@ class FeedDemoControllerTest {
         return spans.ended.getFirst();
     }
 
-    private void startServer(HttpHandler segmentHandler, HttpHandler rankHandler) throws IOException {
+    private void startServer(HttpHandler rankHandler) throws IOException {
         server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-        server.createContext("/v1/segment", closing(segmentHandler));
         server.createContext("/v1/rank", closing(rankHandler));
         server.start();
     }

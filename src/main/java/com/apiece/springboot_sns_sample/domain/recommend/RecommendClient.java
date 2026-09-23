@@ -15,19 +15,6 @@ public class RecommendClient {
 
     private final RestClient recommendRestClient;
 
-    public String segmentOf(Long userId) {
-        SegmentResponse response = recommendRestClient.get()
-                .uri("/v1/segment?userId={userId}", userId)
-                .retrieve()
-                .body(SegmentResponse.class);
-
-        if (response == null || response.segment() == null) {
-            throw new RestClientException("세그먼트 조회가 빈 응답을 반환했습니다 userId=" + userId);
-        }
-
-        return response.segment();
-    }
-
     public List<Long> rank(Long userId, List<Long> postIds) {
         RankResponse response = recommendRestClient.post()
                 .uri("/v1/rank")

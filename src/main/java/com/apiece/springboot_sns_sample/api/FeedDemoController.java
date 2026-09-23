@@ -22,7 +22,6 @@ import java.util.List;
 public class FeedDemoController {
 
     private static final List<Long> FEED_CANDIDATES = List.of(101L, 102L, 103L, 104L, 105L);
-    private static final String UNKNOWN_SEGMENT = "unknown";
 
     private final RecommendClient recommendClient;
     private final RecommendProperties recommendProperties;
@@ -34,22 +33,17 @@ public class FeedDemoController {
         Span span = Span.current()
                 .setAttribute("user.id", userId)
                 .setAttribute("timeout.ms", timeoutMs);
-        String segment = UNKNOWN_SEGMENT;
         try {
-            // 추천 호출이 실패해도 로그와 Span에 사용자 그룹을 남기기 위해 먼저 조회합니다.
-            segment = recommendClient.segmentOf(userId);
             List<Long> rankedPostIds = recommendClient.rank(userId, FEED_CANDIDATES);
 
-            log.info("피드 응답 완료 userId={} segment={} items={}", userId, segment, rankedPostIds.size());
-            return ResponseEntity.ok(new FeedResponse(segment, rankedPostIds));
+            log.info("피드 응답 완료 userId={} items={}", userId, rankedPostIds.size());
+            return ResponseEntity.ok(new FeedResponse(rankedPostIds));
         } catch (RestClientException e) {
-            span.setStatus(StatusCode.ERROR, "recommend timeout");
+            span.setStatus(StatusCode.ERROR, "recommend request failed");
             span.recordException(e);
-            log.error("추천 서비스 호출 실패 userId={} segment={} timeout={}ms",
-                    userId, segment, timeoutMs, e);
-            return ResponseEntity.status(503).body(new FeedResponse(segment, null));
-        } finally {
-            span.setAttribute("user.segment", segment);
+            log.error("추천 서비스 호출 실패 userId={} timeout={}ms",
+                    userId, timeoutMs, e);
+            return ResponseEntity.status(503).body(new FeedResponse(null));
         }
     }
 }
