@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,13 +21,14 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/demo")
 public class ObservabilityDemoController {
 
     private final RecommendService recommendService;
     private final RecommendProperties recommendProperties;
 
     @NewSpan("recommend-fetch")
-    @GetMapping("/api/v1/demo/trace")
+    @GetMapping("/trace")
     public ResponseEntity<TraceResponse> trace(
             @RequestParam(defaultValue = "hello") String message,
             @RequestParam(defaultValue = "1") Long userId,
@@ -56,18 +58,18 @@ public class ObservabilityDemoController {
         }
     }
 
-    @GetMapping("/api/v1/demo/ok")
+    @GetMapping("/ok")
     public ResponseEntity<String> ok() {
         return ResponseEntity.ok("ok");
     }
 
-    @GetMapping("/api/v1/demo/slow")
+    @GetMapping("/slow")
     public ResponseEntity<String> slow() throws InterruptedException {
         Thread.sleep(2000);
         return ResponseEntity.ok("slow");
     }
 
-    @GetMapping("/api/v1/demo/error")
+    @GetMapping("/error")
     public ResponseEntity<ErrorResponse> error() {
         log.info("[STEP 1] 오류 재현 요청 수신");
         log.warn("[STEP 2] 처리 중 이상 징후 발견");
