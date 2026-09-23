@@ -3,7 +3,6 @@ package com.apiece.springboot_sns_sample.api;
 import com.apiece.springboot_sns_sample.api.demo.ErrorResponse;
 import com.apiece.springboot_sns_sample.api.demo.TraceResponse;
 import com.apiece.springboot_sns_sample.domain.recommend.RecommendService;
-import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.api.trace.Span;
@@ -26,7 +25,6 @@ import java.util.List;
 public class ObservabilityDemoController {
 
     private final RecommendService recommendService;
-    private final RecommendProperties recommendProperties;
     private final OpenTelemetry openTelemetry;
 
     @GetMapping("/trace")
@@ -39,7 +37,6 @@ public class ObservabilityDemoController {
             return ResponseEntity.badRequest().build();
         }
         log.info("[STEP 1] 요청 수신 message={} userId={} scenario={}", message, userId, scenario);
-        long timeoutMs = recommendProperties.timeout().toMillis();
         Span span = openTelemetry.getTracer("sns-app.demo")
                 .spanBuilder("recommend-fetch")
                 .setAttribute("user.id", userId)
@@ -55,7 +52,7 @@ public class ObservabilityDemoController {
                 if (!"incident".equals(scenario) || !(e instanceof RestClientException)) {
                     throw e;
                 }
-                log.error("장애 분석 요청 실패 userId={} timeout={}ms", userId, timeoutMs, e);
+                log.error("장애 분석 요청 실패 userId={}", userId, e);
                 return ResponseEntity.status(503).body(new TraceResponse(message, null));
             }
         } finally {

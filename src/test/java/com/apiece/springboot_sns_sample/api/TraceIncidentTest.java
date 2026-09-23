@@ -198,8 +198,6 @@ class TraceIncidentTest {
                         org.springframework.boot.opentelemetry.autoconfigure.OpenTelemetrySdkAutoConfiguration.class))
                 .withBean(com.apiece.springboot_sns_sample.domain.recommend.RecommendService.class,
                         () -> org.mockito.Mockito.mock(com.apiece.springboot_sns_sample.domain.recommend.RecommendService.class))
-                .withBean(RecommendProperties.class,
-                        () -> new RecommendProperties("http://localhost", TIMEOUT, TIMEOUT))
                 .withUserConfiguration(ObservabilityDemoController.class)
                 .run(context -> {
                     assertThat(context).hasNotFailed();
@@ -224,7 +222,7 @@ class TraceIncidentTest {
 
         return new ObservabilityDemoController(
                 new com.apiece.springboot_sns_sample.domain.recommend.RecommendService(new RecommendClient(restClient)),
-                properties, openTelemetry);
+                openTelemetry);
     }
 
     private SpanData endedSpan() {
