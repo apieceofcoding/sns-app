@@ -45,7 +45,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TraceIncidentTest {
 
     private static final Duration TIMEOUT = Duration.ofMillis(200);
-    private static final AttributeKey<Long> TIMEOUT_MS = AttributeKey.longKey("timeout.ms");
 
     private static final String FAST_RANK = "{\"userId\":7,\"segment\":\"ga\",\"rankedPostIds\":[101],\"tookMs\":40}";
 
@@ -65,7 +64,7 @@ class TraceIncidentTest {
     }
 
     @Test
-    @DisplayName("추천 타임아웃은 503으로 응답하고 Span에 오류와 제한 시간을 남긴다")
+    @DisplayName("추천 타임아웃은 503으로 응답하고 Span에 오류를 남긴다")
     void recordsRankTimeout() throws IOException {
         startServer(
                 exchange -> {
@@ -82,7 +81,6 @@ class TraceIncidentTest {
         assertThat(span.getName()).isEqualTo("recommend-fetch");
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
         assertThat(span.getEvents()).anySatisfy(event -> assertThat(event.getName()).isEqualTo("exception"));
-        assertThat(span.getAttributes().get(TIMEOUT_MS)).isEqualTo(TIMEOUT.toMillis());
     }
 
     @Test

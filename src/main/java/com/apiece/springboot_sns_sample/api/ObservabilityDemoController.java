@@ -43,7 +43,6 @@ public class ObservabilityDemoController {
         Span span = openTelemetry.getTracer("sns-app.demo")
                 .spanBuilder("recommend-fetch")
                 .setAttribute("user.id", userId)
-                .setAttribute("timeout.ms", timeoutMs)
                 .startSpan();
         try (Scope ignored = span.makeCurrent()) {
             try {
