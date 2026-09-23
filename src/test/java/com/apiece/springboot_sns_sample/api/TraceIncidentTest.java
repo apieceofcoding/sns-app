@@ -14,14 +14,6 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.Scope;
-import io.micrometer.tracing.otel.bridge.OtelTracer;
-import io.micrometer.tracing.otel.bridge.OtelCurrentTraceContext;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.micrometer.tracing.autoconfigure.MicrometerTracingAutoConfiguration;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.env.PropertiesPropertySource;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
@@ -50,7 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class TraceIncidentTestTest {
+class TraceIncidentTest {
 
     private static final Duration TIMEOUT = Duration.ofMillis(200);
     private static final AttributeKey<Long> TIMEOUT_MS = AttributeKey.longKey("timeout.ms");
@@ -60,14 +52,10 @@ class TraceIncidentTestTest {
     private final CapturingSpanProcessor spans = new CapturingSpanProcessor();
 
     private HttpServer server;
-    private AnnotationConfigApplicationContext context;
     private OpenTelemetrySdk openTelemetry;
 
     @AfterEach
     void tearDown() {
-        if (context != null) {
-            context.close();
-        }
         if (openTelemetry != null) {
             openTelemetry.close();
         }
@@ -141,7 +129,7 @@ class TraceIncidentTestTest {
     }
 
     @Test
-    @DisplayName("어노테이션 Span은 기존 요청 Span의 자식으로 생성되고 종료 후 부모로 복원된다")
+    @DisplayName("직접 생성한 Span은 기존 요청 Span의 자식으로 생성되고 종료 후 부모로 복원된다")
     void createsChildSpanAndRestoresParent() throws IOException {
         startServer(
                 exchange -> respond(exchange, 200, FAST_RANK));
@@ -184,7 +172,7 @@ class TraceIncidentTestTest {
                 .perform(get("/api/v1/demo/trace").param("scenario", "typo"))
                 .andExpect(status().isBadRequest());
         assertThat(calls).hasValue(0);
-        assertThat(spans.ended).hasSize(1);
+        assertThat(spans.ended).isEmpty();
     }
 
     @Test
@@ -193,7 +181,8 @@ class TraceIncidentTestTest {
         var mvc = MockMvcBuilders.standaloneSetup(controller()).build();
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> mvc.perform(get("/api/v1/demo/trace")))
                 .hasCauseInstanceOf(org.springframework.web.client.RestClientException.class);
-        assertThat(spans.ended).hasSize(1);
+        assertThat(endedSpan().getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(Span.current().getSpanContext().isValid()).isFalse();
     }
 
     @Test
@@ -202,6 +191,23 @@ class TraceIncidentTestTest {
         MockMvcBuilders.standaloneSetup(controller()).build()
                 .perform(get("/api/v1/demo/feed"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void usesBootManagedOpenTelemetryWithoutAspectj() {
+        new org.springframework.boot.test.context.runner.ApplicationContextRunner()
+                .withConfiguration(org.springframework.boot.autoconfigure.AutoConfigurations.of(
+                        org.springframework.boot.opentelemetry.autoconfigure.OpenTelemetrySdkAutoConfiguration.class))
+                .withBean(com.apiece.springboot_sns_sample.domain.recommend.RecommendService.class,
+                        () -> org.mockito.Mockito.mock(com.apiece.springboot_sns_sample.domain.recommend.RecommendService.class))
+                .withBean(RecommendProperties.class,
+                        () -> new RecommendProperties("http://localhost", TIMEOUT, TIMEOUT))
+                .withUserConfiguration(ObservabilityDemoController.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context).hasSingleBean(io.opentelemetry.api.OpenTelemetry.class);
+                    assertThat(context).hasSingleBean(ObservabilityDemoController.class);
+                });
     }
 
     private ObservabilityDemoController controller() {
@@ -218,21 +224,9 @@ class TraceIncidentTestTest {
                 .setTracerProvider(SdkTracerProvider.builder().addSpanProcessor(spans).build())
                 .build();
 
-        context = new AnnotationConfigApplicationContext();
-        YamlPropertiesFactoryBean yaml = new YamlPropertiesFactoryBean();
-        yaml.setResources(new ClassPathResource("application.yaml"));
-        context.getEnvironment().getPropertySources()
-                .addLast(new PropertiesPropertySource("application", yaml.getObject()));
-        context.registerBean(io.micrometer.tracing.Tracer.class,
-                () -> new OtelTracer(openTelemetry.getTracer("sns-app.trace-incident"),
-                        new OtelCurrentTraceContext(), event -> {}));
-        context.registerBean(RecommendClient.class, () -> new RecommendClient(restClient));
-        context.registerBean(RecommendProperties.class, () -> properties);
-        context.registerBean(com.apiece.springboot_sns_sample.domain.recommend.RecommendService.class);
-        context.register(AopAutoConfiguration.class, MicrometerTracingAutoConfiguration.class,
-                ObservabilityDemoController.class);
-        context.refresh();
-        return context.getBean(ObservabilityDemoController.class);
+        return new ObservabilityDemoController(
+                new com.apiece.springboot_sns_sample.domain.recommend.RecommendService(new RecommendClient(restClient)),
+                properties, openTelemetry);
     }
 
     private SpanData endedSpan() {

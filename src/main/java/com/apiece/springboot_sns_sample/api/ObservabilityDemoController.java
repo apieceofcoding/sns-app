@@ -4,7 +4,8 @@ import com.apiece.springboot_sns_sample.api.demo.ErrorResponse;
 import com.apiece.springboot_sns_sample.api.demo.TraceResponse;
 import com.apiece.springboot_sns_sample.domain.recommend.RecommendService;
 import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
-import io.micrometer.tracing.annotation.NewSpan;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.context.Scope;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import org.springframework.web.client.RestClientException;
@@ -26,8 +27,8 @@ public class ObservabilityDemoController {
 
     private final RecommendService recommendService;
     private final RecommendProperties recommendProperties;
+    private final OpenTelemetry openTelemetry;
 
-    @NewSpan("recommend-fetch")
     @GetMapping("/trace")
     public ResponseEntity<TraceResponse> trace(
             @RequestParam(defaultValue = "hello") String message,
@@ -39,22 +40,28 @@ public class ObservabilityDemoController {
         }
         log.info("[STEP 1] 요청 수신 message={} userId={} scenario={}", message, userId, scenario);
         long timeoutMs = recommendProperties.timeout().toMillis();
-        Span span = Span.current()
+        Span span = openTelemetry.getTracer("sns-app.demo")
+                .spanBuilder("recommend-fetch")
                 .setAttribute("user.id", userId)
                 .setAttribute("timeout.ms", timeoutMs)
-                .setAttribute("test.scenario", scenario);
-        try {
-            List<Long> rankedPostIds = recommendService.recommend(userId);
-            log.info("[STEP 3] 요청 처리 완료 scenario={}", scenario);
-            return ResponseEntity.ok(new TraceResponse(message, rankedPostIds));
-        } catch (RestClientException e) {
-            if (!"incident".equals(scenario)) {
-                throw e;
+                .setAttribute("test.scenario", scenario)
+                .startSpan();
+        try (Scope ignored = span.makeCurrent()) {
+            try {
+                List<Long> rankedPostIds = recommendService.recommend(userId);
+                log.info("[STEP 3] 요청 처리 완료 scenario={}", scenario);
+                return ResponseEntity.ok(new TraceResponse(message, rankedPostIds));
+            } catch (RuntimeException e) {
+                span.setStatus(StatusCode.ERROR, "recommend request failed");
+                span.recordException(e);
+                if (!"incident".equals(scenario) || !(e instanceof RestClientException)) {
+                    throw e;
+                }
+                log.error("장애 분석 요청 실패 userId={} timeout={}ms", userId, timeoutMs, e);
+                return ResponseEntity.status(503).body(new TraceResponse(message, null));
             }
-            span.setStatus(StatusCode.ERROR, "recommend request failed");
-            span.recordException(e);
-            log.error("장애 분석 요청 실패 userId={} timeout={}ms", userId, timeoutMs, e);
-            return ResponseEntity.status(503).body(new TraceResponse(message, null));
+        } finally {
+            span.end();
         }
     }
 
