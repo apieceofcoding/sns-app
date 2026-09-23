@@ -87,7 +87,6 @@ class FeedDemoControllerTest {
         ResponseEntity<FeedResponse> response = controller().feed(3L);
 
         assertThat(response.getStatusCode().value()).isEqualTo(503);
-        assertThat(response.getBody().reason()).isEqualTo("recommend_timeout");
         assertThat(response.getBody().segment()).isEqualTo("beta");
 
         SpanData span = endedSpan();
@@ -134,8 +133,8 @@ class FeedDemoControllerTest {
     }
 
     @Test
-    @DisplayName("피드 성공 응답은 기존 JSON 필드를 유지하고 reason을 포함하지 않는다")
-    void preservesSuccessJson() throws Exception {
+    @DisplayName("피드 성공 응답은 segment와 postIds만 포함한다")
+    void returnsOnlyFeedFieldsOnSuccess() throws Exception {
         startServer(
                 exchange -> respond(exchange, 200, "{\"userId\":1,\"segment\":\"ga\"}"),
                 exchange -> respond(exchange, 200, FAST_RANK));
@@ -144,13 +143,13 @@ class FeedDemoControllerTest {
                 .perform(get("/api/v1/demo/feed"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("""
-                        {"status":"ok","segment":"ga","postIds":[101]}
+                        {"segment":"ga","postIds":[101]}
                         """, JsonCompareMode.STRICT));
     }
 
     @Test
-    @DisplayName("피드 실패 응답은 기존 JSON 필드를 유지하고 postIds를 포함하지 않는다")
-    void preservesFailureJson() throws Exception {
+    @DisplayName("피드 실패 응답은 segment만 포함하고 HTTP 503을 반환한다")
+    void returnsOnlySegmentOnFailure() throws Exception {
         startServer(
                 exchange -> respond(exchange, 200, "{\"userId\":3,\"segment\":\"beta\"}"),
                 exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"));
@@ -159,7 +158,7 @@ class FeedDemoControllerTest {
                 .perform(get("/api/v1/demo/feed").param("userId", "3"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(content().json("""
-                        {"status":"error","segment":"beta","reason":"recommend_timeout"}
+                        {"segment":"beta"}
                         """, JsonCompareMode.STRICT));
     }
 

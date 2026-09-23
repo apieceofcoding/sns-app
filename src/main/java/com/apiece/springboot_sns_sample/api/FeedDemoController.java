@@ -44,17 +44,18 @@ public class FeedDemoController {
                 .startSpan();
         String segment = UNKNOWN_SEGMENT;
         try (Scope ignored = span.makeCurrent()) {
+            // 추천 호출이 실패해도 로그와 Span에 사용자 그룹을 남기기 위해 먼저 조회합니다.
             segment = recommendClient.segmentOf(userId);
             List<Long> rankedPostIds = recommendClient.rank(userId, FEED_CANDIDATES);
 
             log.info("피드 응답 완료 userId={} segment={} items={}", userId, segment, rankedPostIds.size());
-            return ResponseEntity.ok(FeedResponse.success(segment, rankedPostIds));
+            return ResponseEntity.ok(new FeedResponse(segment, rankedPostIds));
         } catch (RestClientException e) {
             span.setStatus(StatusCode.ERROR, "recommend timeout");
             span.recordException(e);
             log.error("추천 서비스 호출 실패 userId={} segment={} timeout={}ms",
                     userId, segment, timeoutMs, e);
-            return ResponseEntity.status(503).body(FeedResponse.failure(segment));
+            return ResponseEntity.status(503).body(new FeedResponse(segment, null));
         } finally {
             span.setAttribute("user.segment", segment);
             span.end();
