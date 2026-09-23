@@ -44,7 +44,6 @@ public class ObservabilityDemoController {
                 .spanBuilder("recommend-fetch")
                 .setAttribute("user.id", userId)
                 .setAttribute("timeout.ms", timeoutMs)
-                .setAttribute("test.scenario", scenario)
                 .startSpan();
         try (Scope ignored = span.makeCurrent()) {
             try {

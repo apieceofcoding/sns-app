@@ -150,7 +150,7 @@ class TraceIncidentTest {
     }
 
     @Test
-    void defaultTraceKeepsResponseAndRecordsScenario() throws Exception {
+    void defaultTraceKeepsResponseAndCreatesSpan() throws Exception {
         startServer(exchange -> respond(exchange, 200, FAST_RANK));
         MockMvcBuilders.standaloneSetup(controller()).build()
                 .perform(get("/api/v1/demo/trace").param("message", "part-7"))
@@ -158,7 +158,7 @@ class TraceIncidentTest {
                 .andExpect(content().json("""
                         {"message":"part-7","rankedPostIds":[101]}
                         """, JsonCompareMode.STRICT));
-        assertThat(endedSpan().getAttributes().get(AttributeKey.stringKey("test.scenario"))).isEqualTo("trace");
+        assertThat(endedSpan().getName()).isEqualTo("recommend-fetch");
     }
 
     @Test
