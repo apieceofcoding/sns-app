@@ -67,7 +67,6 @@ curl -i http://localhost:8080/api/v1/users/me \
 ```
 
 `/actuator/health`는 01강에서 추가합니다. 기본 앱에서는 위 API로 실행 상태를 확인하세요.
-한 번에 실행하려면 `./scripts/start.sh`를 사용할 수 있어요.
 
 종료할 때는 앱 터미널에서 `Ctrl+C`를 누른 뒤 다음 명령을 실행합니다. DB 데이터는 볼륨에 유지돼요.
 
