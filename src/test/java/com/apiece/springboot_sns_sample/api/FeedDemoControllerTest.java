@@ -170,8 +170,8 @@ class FeedDemoControllerTest {
     }
 
     @Test
-    @DisplayName("피드 실패 응답은 segment만 포함하고 HTTP 503을 반환한다")
-    void returnsOnlySegmentOnFailure() throws Exception {
+    @DisplayName("피드 실패 응답은 segment와 null postIds를 포함하고 HTTP 503을 반환한다")
+    void returnsNullPostIdsOnFailure() throws Exception {
         startServer(
                 exchange -> respond(exchange, 200, "{\"userId\":3,\"segment\":\"beta\"}"),
                 exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"));
@@ -180,7 +180,7 @@ class FeedDemoControllerTest {
                 .perform(get("/api/v1/demo/feed").param("userId", "3"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(content().json("""
-                        {"segment":"beta"}
+                        {"segment":"beta","postIds":null}
                         """, JsonCompareMode.STRICT));
     }
 
