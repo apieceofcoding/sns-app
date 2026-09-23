@@ -1,7 +1,7 @@
 package com.apiece.springboot_sns_sample.api;
 
 import com.apiece.springboot_sns_sample.config.recommend.RecommendConfig;
-import com.apiece.springboot_sns_sample.controller.dto.FeedResponse;
+import com.apiece.springboot_sns_sample.api.demo.TraceResponse;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.test.json.JsonCompareMode;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class FeedDemoControllerTest {
+class TraceIncidentTestTest {
 
     private static final Duration TIMEOUT = Duration.ofMillis(200);
     private static final AttributeKey<Long> TIMEOUT_MS = AttributeKey.longKey("timeout.ms");
@@ -85,7 +85,7 @@ class FeedDemoControllerTest {
                     respond(exchange, 200, FAST_RANK);
                 });
 
-        ResponseEntity<FeedResponse> response = controller().feed(3L);
+        ResponseEntity<TraceResponse> response = controller().incident("hello", 3L);
 
         assertThat(Span.current().getSpanContext().isValid()).isFalse();
         assertThat(response.getStatusCode().value()).isEqualTo(503);
@@ -98,7 +98,7 @@ class FeedDemoControllerTest {
     }
 
     @Test
-    @DisplayName("피드는 추천 API를 한 번만 호출한다")
+    @DisplayName("장애 분석는 추천 API를 한 번만 호출한다")
     void callsRankOnce() throws IOException {
         AtomicInteger calls = new AtomicInteger();
         startServer(exchange -> {
@@ -107,36 +107,36 @@ class FeedDemoControllerTest {
             respond(exchange, 200, FAST_RANK);
         });
 
-        assertThat(controller().feed(7L).getStatusCode().value()).isEqualTo(200);
+        assertThat(controller().incident("hello", 7L).getStatusCode().value()).isEqualTo(200);
         assertThat(calls).hasValue(1);
         assertThat(spans.ended).hasSize(1);
     }
 
     @Test
-    @DisplayName("피드 성공 응답은 postIds만 포함한다")
+    @DisplayName("장애 분석 성공 응답은 rankedPostIds만 포함한다")
     void returnsOnlyFeedFieldsOnSuccess() throws Exception {
         startServer(
                 exchange -> respond(exchange, 200, FAST_RANK));
 
         MockMvcBuilders.standaloneSetup(controller()).build()
-                .perform(get("/api/v1/demo/feed"))
+                .perform(get("/api/v1/demo/trace").param("scenario", "incident"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("""
-                        {"postIds":[101]}
+                        {"message":"hello","rankedPostIds":[101]}
                         """, JsonCompareMode.STRICT));
     }
 
     @Test
-    @DisplayName("피드 실패 응답은 null postIds와 HTTP 503을 반환한다")
+    @DisplayName("장애 분석 실패 응답은 null rankedPostIds와 HTTP 503을 반환한다")
     void returnsNullPostIdsOnFailure() throws Exception {
         startServer(
                 exchange -> respond(exchange, 500, "{\"error\":\"boom\"}"));
 
         MockMvcBuilders.standaloneSetup(controller()).build()
-                .perform(get("/api/v1/demo/feed").param("userId", "3"))
+                .perform(get("/api/v1/demo/trace").param("scenario", "incident").param("userId", "3"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(content().json("""
-                        {"postIds":null}
+                        {"message":"hello","rankedPostIds":null}
                         """, JsonCompareMode.STRICT));
     }
 
@@ -145,10 +145,10 @@ class FeedDemoControllerTest {
     void createsChildSpanAndRestoresParent() throws IOException {
         startServer(
                 exchange -> respond(exchange, 200, FAST_RANK));
-        FeedDemoController controller = controller();
+        ObservabilityDemoController controller = controller();
         Span parent = openTelemetry.getTracer("test").spanBuilder("http-request").startSpan();
         try (Scope ignored = parent.makeCurrent()) {
-            controller.feed(7L);
+            controller.incident("hello", 7L);
 
             SpanData child = endedSpan();
             assertThat(child.getName()).isEqualTo("recommend-fetch");
@@ -161,7 +161,50 @@ class FeedDemoControllerTest {
         }
     }
 
-    private FeedDemoController controller() {
+    @Test
+    void defaultTraceKeepsResponseAndDoesNotCreateIncidentSpan() throws Exception {
+        startServer(exchange -> respond(exchange, 200, FAST_RANK));
+        MockMvcBuilders.standaloneSetup(controller()).build()
+                .perform(get("/api/v1/demo/trace").param("message", "part-7"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("""
+                        {"message":"part-7","rankedPostIds":[101]}
+                        """, JsonCompareMode.STRICT));
+        assertThat(spans.ended).isEmpty();
+    }
+
+    @Test
+    void unknownScenarioIsRejectedWithoutCallingRecommendation() throws Exception {
+        AtomicInteger calls = new AtomicInteger();
+        startServer(exchange -> {
+            calls.incrementAndGet();
+            respond(exchange, 200, FAST_RANK);
+        });
+        MockMvcBuilders.standaloneSetup(controller()).build()
+                .perform(get("/api/v1/demo/trace").param("scenario", "typo"))
+                .andExpect(status().isBadRequest());
+        assertThat(calls).hasValue(0);
+        assertThat(spans.ended).isEmpty();
+    }
+
+    @Test
+    void defaultTraceStillPropagatesRecommendationErrors() throws Exception {
+        startServer(exchange -> respond(exchange, 500, "{}"));
+        var mvc = MockMvcBuilders.standaloneSetup(controller()).build();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> mvc.perform(get("/api/v1/demo/trace")))
+                .hasCauseInstanceOf(org.springframework.web.client.RestClientException.class);
+        assertThat(spans.ended).isEmpty();
+    }
+
+    @Test
+    void feedMappingIsRemoved() throws Exception {
+        startServer(exchange -> respond(exchange, 200, FAST_RANK));
+        MockMvcBuilders.standaloneSetup(controller()).build()
+                .perform(get("/api/v1/demo/feed"))
+                .andExpect(status().isNotFound());
+    }
+
+    private ObservabilityDemoController controller() {
         RecommendProperties properties = new RecommendProperties(
                 "http://localhost:" + server.getAddress().getPort(),
                 TIMEOUT,
@@ -181,14 +224,15 @@ class FeedDemoControllerTest {
         context.getEnvironment().getPropertySources()
                 .addLast(new PropertiesPropertySource("application", yaml.getObject()));
         context.registerBean(io.micrometer.tracing.Tracer.class,
-                () -> new OtelTracer(openTelemetry.getTracer("sns-app.feed-demo"),
+                () -> new OtelTracer(openTelemetry.getTracer("sns-app.trace-incident"),
                         new OtelCurrentTraceContext(), event -> {}));
         context.registerBean(RecommendClient.class, () -> new RecommendClient(restClient));
         context.registerBean(RecommendProperties.class, () -> properties);
+        context.registerBean(com.apiece.springboot_sns_sample.domain.recommend.RecommendService.class);
         context.register(AopAutoConfiguration.class, MicrometerTracingAutoConfiguration.class,
-                FeedDemoController.class);
+                ObservabilityDemoController.class);
         context.refresh();
-        return context.getBean(FeedDemoController.class);
+        return context.getBean(ObservabilityDemoController.class);
     }
 
     private SpanData endedSpan() {

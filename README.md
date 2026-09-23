@@ -103,3 +103,10 @@ cd scripts/part-1
 ```
 
 CI의 이미지 주소와 대상 저장소는 자신의 계정으로 설정하세요. `sns-devops` checkout은 `ref: main`, Argo CD는 `targetRevision: main`으로 맞춥니다.
+
+### 07강과 09강 요청 구분
+
+- 07강: `/api/v1/demo/trace?userId=1`, 기존 트레이스 실습 동작을 유지해요.
+- 09강: `/api/v1/demo/trace?scenario=incident&userId=3`, 추천 호출 실패를 503으로 반환하고 조사용 span을 기록합니다.
+
+09강 요청은 앱의 `scripts/part-9/run.sh 60`으로 생성해요. `/feed`는 사용하지 않습니다.
