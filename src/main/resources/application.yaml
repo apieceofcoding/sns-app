@@ -17,6 +17,9 @@ spring:
   session:
     store-type: redis
 management:
+  observations:
+    annotations:
+      enabled: true
   otlp:
     metrics:
       export:

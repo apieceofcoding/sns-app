@@ -4,11 +4,10 @@ import com.apiece.springboot_sns_sample.config.recommend.RecommendProperties;
 import com.apiece.springboot_sns_sample.controller.dto.FeedResponse;
 import com.apiece.springboot_sns_sample.domain.recommend.RecommendClient;
 import org.springframework.web.client.RestClientException;
-import io.opentelemetry.api.OpenTelemetry;
+import io.micrometer.tracing.annotation.NewSpan;
+import lombok.RequiredArgsConstructor;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.context.Scope;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,31 +18,24 @@ import java.util.List;
 
 @Slf4j
 @RestController
+@RequiredArgsConstructor
 public class FeedDemoController {
 
     private static final List<Long> FEED_CANDIDATES = List.of(101L, 102L, 103L, 104L, 105L);
     private static final String UNKNOWN_SEGMENT = "unknown";
 
-    private final Tracer tracer;
     private final RecommendClient recommendClient;
-    private final long timeoutMs;
+    private final RecommendProperties recommendProperties;
 
-    public FeedDemoController(OpenTelemetry openTelemetry,
-                              RecommendClient recommendClient,
-                              RecommendProperties recommendProperties) {
-        this.tracer = openTelemetry.getTracer("sns-app.feed-demo");
-        this.recommendClient = recommendClient;
-        this.timeoutMs = recommendProperties.timeout().toMillis();
-    }
-
+    @NewSpan("recommend-fetch")
     @GetMapping("/api/v1/demo/feed")
     public ResponseEntity<FeedResponse> feed(@RequestParam(defaultValue = "1") long userId) {
-        Span span = tracer.spanBuilder("recommend-fetch")
+        long timeoutMs = recommendProperties.timeout().toMillis();
+        Span span = Span.current()
                 .setAttribute("user.id", userId)
-                .setAttribute("timeout.ms", timeoutMs)
-                .startSpan();
+                .setAttribute("timeout.ms", timeoutMs);
         String segment = UNKNOWN_SEGMENT;
-        try (Scope ignored = span.makeCurrent()) {
+        try {
             // 추천 호출이 실패해도 로그와 Span에 사용자 그룹을 남기기 위해 먼저 조회합니다.
             segment = recommendClient.segmentOf(userId);
             List<Long> rankedPostIds = recommendClient.rank(userId, FEED_CANDIDATES);
@@ -58,7 +50,6 @@ public class FeedDemoController {
             return ResponseEntity.status(503).body(new FeedResponse(segment, null));
         } finally {
             span.setAttribute("user.segment", segment);
-            span.end();
         }
     }
 }

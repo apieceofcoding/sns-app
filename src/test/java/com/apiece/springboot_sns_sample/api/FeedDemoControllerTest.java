@@ -12,7 +12,16 @@ import com.apiece.springboot_sns_sample.domain.recommend.RecommendClient;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Scope;
+import io.micrometer.tracing.otel.bridge.OtelTracer;
+import io.micrometer.tracing.otel.bridge.OtelCurrentTraceContext;
+import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
+import org.springframework.boot.micrometer.tracing.autoconfigure.MicrometerTracingAutoConfiguration;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.env.PropertiesPropertySource;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
@@ -52,9 +61,17 @@ class FeedDemoControllerTest {
     private final CapturingSpanProcessor spans = new CapturingSpanProcessor();
 
     private HttpServer server;
+    private AnnotationConfigApplicationContext context;
+    private OpenTelemetrySdk openTelemetry;
 
     @AfterEach
     void tearDown() {
+        if (context != null) {
+            context.close();
+        }
+        if (openTelemetry != null) {
+            openTelemetry.close();
+        }
         if (server != null) {
             server.stop(0);
         }
@@ -69,6 +86,7 @@ class FeedDemoControllerTest {
 
         ResponseEntity<FeedResponse> response = controller().feed(7L);
 
+        assertThat(Span.current().getSpanContext().isValid()).isFalse();
         assertThat(response.getStatusCode().value()).isEqualTo(200);
         assertThat(response.getBody().segment()).isEqualTo("beta");
         assertThat(endedSpan().getAttributes().get(USER_SEGMENT)).isEqualTo("beta");
@@ -86,12 +104,14 @@ class FeedDemoControllerTest {
 
         ResponseEntity<FeedResponse> response = controller().feed(3L);
 
+        assertThat(Span.current().getSpanContext().isValid()).isFalse();
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getBody().segment()).isEqualTo("beta");
 
         SpanData span = endedSpan();
         assertThat(span.getName()).isEqualTo("recommend-fetch");
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(span.getEvents()).anySatisfy(event -> assertThat(event.getName()).isEqualTo("exception"));
         assertThat(span.getAttributes().get(USER_SEGMENT)).isEqualTo("beta");
         assertThat(span.getAttributes().get(TIMEOUT_MS)).isEqualTo(TIMEOUT.toMillis());
     }
@@ -109,12 +129,14 @@ class FeedDemoControllerTest {
 
         ResponseEntity<FeedResponse> response = controller().feed(3L);
 
+        assertThat(Span.current().getSpanContext().isValid()).isFalse();
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getBody().segment()).isEqualTo("unknown");
         assertThat(rankCalls).hasValue(0);
 
         SpanData span = endedSpan();
         assertThat(span.getStatus().getStatusCode()).isEqualTo(StatusCode.ERROR);
+        assertThat(span.getEvents()).anySatisfy(event -> assertThat(event.getName()).isEqualTo("exception"));
         assertThat(span.getAttributes().get(USER_SEGMENT)).isEqualTo("unknown");
     }
 
@@ -162,6 +184,28 @@ class FeedDemoControllerTest {
                         """, JsonCompareMode.STRICT));
     }
 
+    @Test
+    @DisplayName("어노테이션 Span은 기존 요청 Span의 자식으로 생성되고 종료 후 부모로 복원된다")
+    void createsChildSpanAndRestoresParent() throws IOException {
+        startServer(
+                exchange -> respond(exchange, 200, "{\"userId\":7,\"segment\":\"ga\"}"),
+                exchange -> respond(exchange, 200, FAST_RANK));
+        FeedDemoController controller = controller();
+        Span parent = openTelemetry.getTracer("test").spanBuilder("http-request").startSpan();
+        try (Scope ignored = parent.makeCurrent()) {
+            controller.feed(7L);
+
+            SpanData child = endedSpan();
+            assertThat(child.getName()).isEqualTo("recommend-fetch");
+            assertThat(child.getParentSpanId()).isEqualTo(parent.getSpanContext().getSpanId());
+            assertThat(child.getTraceId()).isEqualTo(parent.getSpanContext().getTraceId());
+            assertThat(child.getAttributes().get(AttributeKey.longKey("user.id"))).isEqualTo(7L);
+            assertThat(Span.current().getSpanContext()).isEqualTo(parent.getSpanContext());
+        } finally {
+            parent.end();
+        }
+    }
+
     private FeedDemoController controller() {
         RecommendProperties properties = new RecommendProperties(
                 "http://localhost:" + server.getAddress().getPort(),
@@ -172,11 +216,24 @@ class FeedDemoControllerTest {
                 .recommendRestClient(RestClient.builder(), ClientHttpRequestFactoryBuilder.detect(),
                         HttpClientSettings.defaults(), properties);
 
-        OpenTelemetry openTelemetry = OpenTelemetrySdk.builder()
+        openTelemetry = OpenTelemetrySdk.builder()
                 .setTracerProvider(SdkTracerProvider.builder().addSpanProcessor(spans).build())
                 .build();
 
-        return new FeedDemoController(openTelemetry, new RecommendClient(restClient), properties);
+        context = new AnnotationConfigApplicationContext();
+        YamlPropertiesFactoryBean yaml = new YamlPropertiesFactoryBean();
+        yaml.setResources(new ClassPathResource("application.yaml"));
+        context.getEnvironment().getPropertySources()
+                .addLast(new PropertiesPropertySource("application", yaml.getObject()));
+        context.registerBean(io.micrometer.tracing.Tracer.class,
+                () -> new OtelTracer(openTelemetry.getTracer("sns-app.feed-demo"),
+                        new OtelCurrentTraceContext(), event -> {}));
+        context.registerBean(RecommendClient.class, () -> new RecommendClient(restClient));
+        context.registerBean(RecommendProperties.class, () -> properties);
+        context.register(AopAutoConfiguration.class, MicrometerTracingAutoConfiguration.class,
+                FeedDemoController.class);
+        context.refresh();
+        return context.getBean(FeedDemoController.class);
     }
 
     private SpanData endedSpan() {

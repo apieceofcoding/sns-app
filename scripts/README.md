@@ -30,3 +30,13 @@ cd ../part-2
 
 기본 앱만 실행하려면 `sns-app` 폴더에서 `./scripts/start.sh`를 사용해요.
 05강 이후에는 변경한 앱을 배포하고 필요한 관측 스택을 준비한 뒤 실행합니다.
+
+## 09강의 Span 어노테이션
+
+`FeedDemoController.feed()`의 `@NewSpan("recommend-fetch")`가 조사용 Span의 시작, 현재 컨텍스트 설정과 종료를 처리합니다. Spring Boot의 Micrometer 기반 OpenTelemetry 구성을 그대로 사용해요.
+
+동작하려면 `spring-boot-starter-aspectj` 의존성과 `management.observations.annotations.enabled: true` 설정이 필요합니다. Spring이 관리하는 프록시를 통해 호출해야 하므로 직접 `new FeedDemoController(...)`로 만든 객체에는 어노테이션이 적용되지 않아요.
+
+`Span.current()`에는 사용자 ID, 제한 시간과 segment를 기록합니다. 예외를 잡아 HTTP 503 응답으로 반환하기 때문에 `setStatus(ERROR)`와 `recordException()`은 직접 호출해요. HTTP 요청 Span 아래에 `recommend-fetch`라는 별도 조사 구간을 남기는 구성입니다.
+
+설정 근거: [Spring Boot 어노테이션 지원](https://docs.spring.io/spring-boot/reference/actuator/observability.html#actuator.observability.annotations), [Micrometer Tracing 어노테이션](https://docs.micrometer.io/tracing/reference/api.html).
