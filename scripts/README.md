@@ -27,8 +27,3 @@ cd ../part-2
 | `part-8` | `./run.sh error` | 오류율 증가와 복구 |
 | `part-8` | `./run.sh latency` | 응답 지연과 복구 |
 | `part-9` | `./run.sh 60` | 장애 분석용 요청 60회 |
-
-기본 앱만 실행하려면 `sns-app` 폴더에서 `./scripts/start.sh`를 사용해요.
-05강 이후에는 변경한 앱을 배포하고 필요한 관측 스택을 준비한 뒤 실행합니다.
-
-09강은 `/api/v1/demo/trace?scenario=incident`로 장애를 재현합니다. 07강의 `/api/v1/demo/trace` 호출과 응답은 유지해요. 두 모드는 메트릭의 URI가 같으므로 `recommend-fetch` span과 장애 분석 로그로 09강 요청을 구분합니다.

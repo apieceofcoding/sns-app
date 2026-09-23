@@ -67,7 +67,6 @@ curl -i http://localhost:8080/api/v1/users/me \
 ```
 
 `/actuator/health`는 01강에서 추가합니다. 기본 앱에서는 위 API로 실행 상태를 확인하세요.
-한 번에 실행하려면 `./scripts/start.sh`를 사용할 수 있어요.
 
 종료할 때는 앱 터미널에서 `Ctrl+C`를 누른 뒤 다음 명령을 실행합니다. DB 데이터는 볼륨에 유지돼요.
 
@@ -103,10 +102,3 @@ cd scripts/part-1
 ```
 
 CI의 이미지 주소와 대상 저장소는 자신의 계정으로 설정하세요. `sns-devops` checkout은 `ref: main`, Argo CD는 `targetRevision: main`으로 맞춥니다.
-
-### 07강과 09강 요청 구분
-
-- 07강: `/api/v1/demo/trace?userId=1`, 기존 트레이스 실습 동작을 유지해요.
-- 09강: `/api/v1/demo/trace?scenario=incident&userId=3`, 추천 호출 실패를 503으로 반환하고 조사용 span을 기록합니다.
-
-09강 요청은 앱의 `scripts/part-9/run.sh 60`으로 생성해요. `/feed`는 사용하지 않습니다.
