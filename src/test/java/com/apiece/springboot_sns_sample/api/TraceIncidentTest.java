@@ -85,7 +85,7 @@ class TraceIncidentTestTest {
                     respond(exchange, 200, FAST_RANK);
                 });
 
-        ResponseEntity<TraceResponse> response = controller().incident("hello", 3L);
+        ResponseEntity<TraceResponse> response = controller().trace("hello", 3L, "incident");
 
         assertThat(Span.current().getSpanContext().isValid()).isFalse();
         assertThat(response.getStatusCode().value()).isEqualTo(503);
@@ -98,7 +98,7 @@ class TraceIncidentTestTest {
     }
 
     @Test
-    @DisplayName("장애 분석는 추천 API를 한 번만 호출한다")
+    @DisplayName("장애 분석은 추천 API를 한 번만 호출한다")
     void callsRankOnce() throws IOException {
         AtomicInteger calls = new AtomicInteger();
         startServer(exchange -> {
@@ -107,13 +107,13 @@ class TraceIncidentTestTest {
             respond(exchange, 200, FAST_RANK);
         });
 
-        assertThat(controller().incident("hello", 7L).getStatusCode().value()).isEqualTo(200);
+        assertThat(controller().trace("hello", 7L, "incident").getStatusCode().value()).isEqualTo(200);
         assertThat(calls).hasValue(1);
         assertThat(spans.ended).hasSize(1);
     }
 
     @Test
-    @DisplayName("장애 분석 성공 응답은 rankedPostIds만 포함한다")
+    @DisplayName("장애 분석 성공 응답은 message와 rankedPostIds를 포함한다")
     void returnsOnlyFeedFieldsOnSuccess() throws Exception {
         startServer(
                 exchange -> respond(exchange, 200, FAST_RANK));
@@ -148,7 +148,7 @@ class TraceIncidentTestTest {
         ObservabilityDemoController controller = controller();
         Span parent = openTelemetry.getTracer("test").spanBuilder("http-request").startSpan();
         try (Scope ignored = parent.makeCurrent()) {
-            controller.incident("hello", 7L);
+            controller.trace("hello", 7L, "incident");
 
             SpanData child = endedSpan();
             assertThat(child.getName()).isEqualTo("recommend-fetch");
@@ -162,7 +162,7 @@ class TraceIncidentTestTest {
     }
 
     @Test
-    void defaultTraceKeepsResponseAndDoesNotCreateIncidentSpan() throws Exception {
+    void defaultTraceKeepsResponseAndRecordsScenario() throws Exception {
         startServer(exchange -> respond(exchange, 200, FAST_RANK));
         MockMvcBuilders.standaloneSetup(controller()).build()
                 .perform(get("/api/v1/demo/trace").param("message", "part-7"))
@@ -170,7 +170,7 @@ class TraceIncidentTestTest {
                 .andExpect(content().json("""
                         {"message":"part-7","rankedPostIds":[101]}
                         """, JsonCompareMode.STRICT));
-        assertThat(spans.ended).isEmpty();
+        assertThat(endedSpan().getAttributes().get(AttributeKey.stringKey("test.scenario"))).isEqualTo("trace");
     }
 
     @Test
@@ -184,7 +184,7 @@ class TraceIncidentTestTest {
                 .perform(get("/api/v1/demo/trace").param("scenario", "typo"))
                 .andExpect(status().isBadRequest());
         assertThat(calls).hasValue(0);
-        assertThat(spans.ended).isEmpty();
+        assertThat(spans.ended).hasSize(1);
     }
 
     @Test
@@ -193,7 +193,7 @@ class TraceIncidentTestTest {
         var mvc = MockMvcBuilders.standaloneSetup(controller()).build();
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> mvc.perform(get("/api/v1/demo/trace")))
                 .hasCauseInstanceOf(org.springframework.web.client.RestClientException.class);
-        assertThat(spans.ended).isEmpty();
+        assertThat(spans.ended).hasSize(1);
     }
 
     @Test

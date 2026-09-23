@@ -25,35 +25,30 @@ public class ObservabilityDemoController {
     private final RecommendService recommendService;
     private final RecommendProperties recommendProperties;
 
-    @GetMapping(value = "/api/v1/demo/trace", params = "!scenario")
+    @NewSpan("recommend-fetch")
+    @GetMapping("/api/v1/demo/trace")
     public ResponseEntity<TraceResponse> trace(
             @RequestParam(defaultValue = "hello") String message,
-            @RequestParam(defaultValue = "1") Long userId
+            @RequestParam(defaultValue = "1") Long userId,
+            @RequestParam(defaultValue = "trace") String scenario
     ) {
-        log.info("[STEP 1] 요청 수신 message={} userId={}", message, userId);
-
-        List<Long> rankedPostIds = recommendService.recommend(userId);
-
-        log.info("[STEP 3] 요청 처리 완료");
-
-        return ResponseEntity.ok(new TraceResponse(message, rankedPostIds));
-    }
-
-    @NewSpan("recommend-fetch")
-    @GetMapping(value = "/api/v1/demo/trace", params = "scenario=incident")
-    public ResponseEntity<TraceResponse> incident(
-            @RequestParam(defaultValue = "hello") String message,
-            @RequestParam(defaultValue = "1") Long userId
-    ) {
+        if (!"trace".equals(scenario) && !"incident".equals(scenario)) {
+            return ResponseEntity.badRequest().build();
+        }
+        log.info("[STEP 1] 요청 수신 message={} userId={} scenario={}", message, userId, scenario);
         long timeoutMs = recommendProperties.timeout().toMillis();
         Span span = Span.current()
                 .setAttribute("user.id", userId)
-                .setAttribute("timeout.ms", timeoutMs);
+                .setAttribute("timeout.ms", timeoutMs)
+                .setAttribute("test.scenario", scenario);
         try {
             List<Long> rankedPostIds = recommendService.recommend(userId);
-            log.info("장애 분석 요청 완료 userId={}", userId);
+            log.info("[STEP 3] 요청 처리 완료 scenario={}", scenario);
             return ResponseEntity.ok(new TraceResponse(message, rankedPostIds));
         } catch (RestClientException e) {
+            if (!"incident".equals(scenario)) {
+                throw e;
+            }
             span.setStatus(StatusCode.ERROR, "recommend request failed");
             span.recordException(e);
             log.error("장애 분석 요청 실패 userId={} timeout={}ms", userId, timeoutMs, e);

@@ -20,7 +20,7 @@ class ObservabilityDemoControllerTest {
     @Test
     void okReturnsWithoutCallingRecommend() throws Exception {
         RecommendClient client = mock(RecommendClient.class);
-        MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client), null)).build()
+        MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client), new com.apiece.springboot_sns_sample.config.recommend.RecommendProperties("http://localhost", java.time.Duration.ofMillis(200), java.time.Duration.ofMillis(200)))).build()
                 .perform(get("/api/v1/demo/ok"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("ok"));
@@ -30,7 +30,7 @@ class ObservabilityDemoControllerTest {
     @Test
     void slowTakesAtLeastTwoSecondsWithoutCallingRecommend() throws Exception {
         RecommendClient client = mock(RecommendClient.class);
-        var mvc = MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client), null)).build();
+        var mvc = MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client), new com.apiece.springboot_sns_sample.config.recommend.RecommendProperties("http://localhost", java.time.Duration.ofMillis(200), java.time.Duration.ofMillis(200)))).build();
         long start = System.nanoTime();
         mvc.perform(get("/api/v1/demo/slow"))
                 .andExpect(status().isOk())
@@ -43,7 +43,7 @@ class ObservabilityDemoControllerTest {
     void errorReturnsInternalServerError() throws Exception {
         RecommendClient client = mock(RecommendClient.class);
 
-        MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client), null)).build()
+        MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client), new com.apiece.springboot_sns_sample.config.recommend.RecommendProperties("http://localhost", java.time.Duration.ofMillis(200), java.time.Duration.ofMillis(200)))).build()
                 .perform(get("/api/v1/demo/error"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("error"))
@@ -58,7 +58,7 @@ class ObservabilityDemoControllerTest {
         when(client.rank(1L, List.of(101L, 102L, 103L, 104L, 105L)))
                 .thenReturn(List.of(105L, 104L, 103L, 102L, 101L));
 
-        MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client), null)).build()
+        MockMvcBuilders.standaloneSetup(new ObservabilityDemoController(new RecommendService(client), new com.apiece.springboot_sns_sample.config.recommend.RecommendProperties("http://localhost", java.time.Duration.ofMillis(200), java.time.Duration.ofMillis(200)))).build()
                 .perform(get("/api/v1/demo/trace"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").doesNotExist())
