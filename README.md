@@ -1,8 +1,5 @@
 # sns-app
 
-> 현재 브랜치는 06강 완료본입니다. 직접 따라 만들려면 `main`에서 시작하세요.
-> 완료본의 실행 방법은 [scripts/README.md](scripts/README.md)를 참고해요. 아래 기본 앱과 시작 골격 안내는 `main` 기준입니다.
-
 배포와 관측 가능성 강의에서 사용하는 Spring Boot SNS 애플리케이션입니다.
 `main`의 기본 앱에서 바로 01강을 시작해요. 강의를 따라 컨테이너화, CI, 메트릭, 로그와 트레이스를 직접 추가합니다.
 
@@ -36,6 +33,8 @@ git branch --show-current
 현재 브랜치가 `main`인지 확인하세요. Gradle은 저장소의 wrapper를 사용합니다.
 
 ## 기본 앱 실행
+
+아래 설명은 `main`의 시작 코드 기준입니다. 완료본의 실행은 [scripts/README.md](scripts/README.md)를 참고해요.
 
 아래 명령은 `sns-app` 디렉터리에서 실행해요.
 현재 Compose에는 PostgreSQL, Redis, RustFS가 있고, 앱은 로컬 JVM에서 실행합니다.
@@ -102,3 +101,11 @@ cd scripts/part-1
 ```
 
 CI의 이미지 주소와 대상 저장소는 자신의 계정으로 설정하세요. `sns-devops` checkout은 `ref: main`, Argo CD는 `targetRevision: main`으로 맞춥니다.
+
+## 공통 자료와 브랜치 반영 원칙
+
+모든 README와 `scripts/part-*/`는 `main`에서 최신본을 관리합니다. 변경은 아래 순서로 앞 브랜치를 다음 브랜치에 병합해 내용과 이력을 함께 반영해요.
+
+`main` → `part-1-containerization` → `part-2-kind-deployment` → … → `part-9-ai-agent-analysis`
+
+공통 자료는 모든 단원에서 같게 유지하고, 앱 코드와 배포 설정은 각 단원의 완료 상태를 유지합니다. README와 스크립트가 처음부터 제공되어도 후반부 실습의 코드와 환경까지 준비된 것은 아니에요. 해당 단원의 준비를 마친 뒤 실행하세요.
