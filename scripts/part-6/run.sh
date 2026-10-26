@@ -4,9 +4,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 source scripts/common.sh
-require_files src/main/resources/logback-spring.xml src/main/java/com/apiece/springboot_sns_sample/config/OpenTelemetryLogConfig.java
+require_files src/main/resources/application.yaml
 
-echo "06강의 OTLP 로그 전송 설정을 작성하고 앱을 다시 배포한 뒤 로그를 확인합니다."
+echo "06강의 JSON 콘솔 로그 설정으로 앱을 배포한 뒤 로그를 확인합니다."
 echo "수집기(Loki, OTel Collector) 설치는 sns-devops 에서 진행합니다."
 echo
 echo "  sns-devops/scripts/part-6 폴더에서 ./run.sh를 실행하세요."

@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 source scripts/common.sh
-require_files src/main/java/com/apiece/springboot_sns_sample/api/ObservabilityDemoController.java src/main/java/com/apiece/springboot_sns_sample/domain/recommendation/RecommenderClient.java
+require_files src/main/java/com/apiece/springboot_sns_sample/api/ObservabilityDemoController.java src/main/java/com/apiece/springboot_sns_sample/domain/recommend/RecommendClient.java
 
 # 윈도우는 *.localhost 를 자동으로 127.0.0.1 로 풀지 않습니다. 안 될 때 안내할 위치를 고릅니다.
 hosts_hint() {
@@ -25,4 +25,5 @@ if curl -fsS "http://sns.localhost/api/v1/demo/trace?userId=1" 2>/dev/null; then
 else
     echo "  http://sns.localhost 에 접근할 수 없습니다. 클러스터와 Ingress 를 확인하세요." >&2
     hosts_hint
+    exit 1
 fi
